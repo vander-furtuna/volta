@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { CW_PAGE_SIZE } from "./config";
 import type { CwClient } from "./http-client";
 
@@ -7,14 +8,19 @@ import type { CwClient } from "./http-client";
  * - Update: PUT  /api/partner/v1/merchant/coupons/{id} — full body; name, type and value are required
  * - List:   GET  /api/partner/v1/merchant/coupons — pagination only (max 20 per page), no code filter
  * The list has no usage counter: usage is counted from order discounts (coupon_id).
- * Source: https://docs.cardapioweb.com/api-reference/loja/cupons/
+ * Source: https://docs.cardapioweb.com/api-reference/loja/cupons/ (schemas in generated/store.ts)
  */
 
 const COUPONS_PATH = "/api/partner/v1/merchant/coupons";
 
-export type CwCouponType = "flat_discount" | "percent_discount" | "free_shipping";
-export type CwOrderType = "delivery" | "takeout" | "onsite";
+const couponTypeSchema = z.enum(["flat_discount", "percent_discount", "free_shipping"]);
+const orderTypeSchema = z.enum(["delivery", "takeout", "onsite"]);
+export type CwCouponType = z.infer<typeof couponTypeSchema>;
+export type CwOrderType = z.infer<typeof orderTypeSchema>;
+export type CwWeekday =
+  "sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday";
 
+/** Body sent to CW when creating or updating a coupon. */
 export interface CwCouponInput {
   name: string;
   type: CwCouponType;
@@ -29,7 +35,7 @@ export interface CwCouponInput {
   customer_multi_use: boolean;
   availability_start_time?: string | null;
   availability_end_time?: string | null;
-  available_days?: number[];
+  available_days?: CwWeekday[];
   available_order_types: CwOrderType[];
   /** YYYY-MM-DD */
   available_from: string;
@@ -38,28 +44,47 @@ export interface CwCouponInput {
   item_ids?: number[];
 }
 
-export type CwCouponStatus =
-  | "not_active"
-  | "not_yet_available"
-  | "expired"
-  | "usage_limit_reached"
-  | "not_available"
-  | "valid";
+export const cwCouponStatusSchema = z.enum([
+  "not_active",
+  "not_yet_available",
+  "expired",
+  "usage_limit_reached",
+  "not_available",
+  "valid",
+]);
 
-export interface CwCoupon extends CwCouponInput {
-  id: number;
-  /** Used for automatic application through the menu link */
-  uid: string;
-  status: CwCouponStatus;
-}
+/** Coupon as returned by CW. Only the fields Volta relies on are required. */
+export const cwCouponSchema = z.looseObject({
+  id: z.number().int().positive(),
+  uid: z.string(),
+  code: z.string().nullable(),
+  name: z.string(),
+  type: couponTypeSchema,
+  value: z.number().nullable(),
+  active: z.boolean(),
+  status: cwCouponStatusSchema,
+  minimum_order_value: z.number().nullable(),
+  use_limit: z.number().nullable(),
+  new_customers_only: z.boolean(),
+  customer_multi_use: z.boolean(),
+  available_from: z.string().nullable(),
+  expires_at: z.string().nullable(),
+  available_order_types: z.array(orderTypeSchema).optional(),
+});
 
-interface CwCouponPage {
-  coupons: CwCoupon[];
-  pagination: { current_page: number; total_pages: number; total_coupons: number };
-}
+export type CwCoupon = z.infer<typeof cwCouponSchema>;
+
+const couponPageSchema = z.object({
+  coupons: z.array(cwCouponSchema),
+  pagination: z.object({
+    current_page: z.number().int(),
+    total_pages: z.number().int().nonnegative(),
+    total_coupons: z.number().int().nonnegative(),
+  }),
+});
 
 export function createCoupon(client: CwClient, input: CwCouponInput): Promise<CwCoupon> {
-  return client.post<CwCoupon>(COUPONS_PATH, input);
+  return client.post(COUPONS_PATH, input, cwCouponSchema);
 }
 
 /** Sends the whole coupon. Keep the input used at creation so it can be re-sent. */
@@ -68,7 +93,7 @@ export function updateCoupon(
   id: number,
   input: CwCouponInput,
 ): Promise<CwCoupon> {
-  return client.put<CwCoupon>(`${COUPONS_PATH}/${id}`, input);
+  return client.put(`${COUPONS_PATH}/${id}`, input, cwCouponSchema);
 }
 
 export function activateCoupon(
@@ -82,11 +107,13 @@ export function activateCoupon(
 /**
  * Finds a coupon by code by walking every page.
  * Call it before retrying a failed creation so the store never gets duplicate coupons.
+ * The page schema requires numeric pagination, so a response without `total_pages` is an
+ * error rather than an endless loop.
  */
 export async function findCouponByCode(client: CwClient, code: string): Promise<CwCoupon | null> {
   const target = code.trim().toUpperCase();
   for (let page = 1; ; page++) {
-    const result = await client.get<CwCouponPage>(COUPONS_PATH, {
+    const result = await client.get(COUPONS_PATH, couponPageSchema, {
       page,
       per_page: CW_PAGE_SIZE.coupons,
     });

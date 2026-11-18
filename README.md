@@ -42,17 +42,18 @@ Para integrar com a CW de verdade, siga [`docs/architecture/cardapio-web-integra
 
 ## Scripts
 
-| Comando                         | O que faz                                                                    |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| `pnpm dev`                      | Servidor de desenvolvimento                                                  |
-| `pnpm build` / `pnpm start`     | Build e servidor de produção                                                 |
-| `pnpm check`                    | Lint, tipos e testes de unidade (o mesmo que a CI roda)                      |
-| `pnpm lint` / `pnpm typecheck`  | Verificações isoladas                                                        |
-| `pnpm test` / `pnpm test:watch` | Testes de unidade (Vitest)                                                   |
-| `pnpm test:e2e`                 | Testes ponta a ponta (Playwright; rode `pnpm exec playwright install` antes) |
-| `pnpm format`                   | Formata com Prettier                                                         |
-| `pnpm templates:export`         | Regenera `design/templates/html` a partir dos templates do canvas            |
-| `pnpm cw:types`                 | Regenera os tipos da API da CW a partir das especificações OpenAPI           |
+| Comando                         | O que faz                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------ |
+| `pnpm dev`                      | Servidor de desenvolvimento                                                                |
+| `pnpm build` / `pnpm start`     | Build e servidor de produção                                                               |
+| `pnpm check`                    | Lint, tipos e testes de unidade (o mesmo que a CI roda)                                    |
+| `pnpm lint` / `pnpm typecheck`  | Verificações isoladas                                                                      |
+| `pnpm test` / `pnpm test:watch` | Testes de unidade (Vitest)                                                                 |
+| `pnpm test:db`                  | Testes de integração do banco (exige `VOLTA_TEST_DATABASE_URL` com as migrações aplicadas) |
+| `pnpm test:e2e`                 | Testes ponta a ponta (Playwright; rode `pnpm exec playwright install` antes)               |
+| `pnpm format`                   | Formata com Prettier                                                                       |
+| `pnpm templates:export`         | Regenera `design/templates/html` a partir dos templates do canvas                          |
+| `pnpm cw:types`                 | Regenera os tipos da API da CW a partir das especificações OpenAPI                         |
 
 ## Estrutura
 

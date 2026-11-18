@@ -1,10 +1,15 @@
 import "server-only";
-import type { StoredWebhookEvent, SyncJobQueue, WebhookEventStore } from "@/application/ports";
+import type {
+  BillingEventStore,
+  IncomingOrderEvent,
+  OrderWebhookInbox,
+  StoredWebhookEvent,
+} from "@/application/ports";
 import { getServiceClient } from "./supabase";
 
 const UNIQUE_VIOLATION = "23505";
 
-export const supabaseWebhookEventStore: WebhookEventStore = {
+export const supabaseBillingEventStore: BillingEventStore = {
   async saveIfNew(event: StoredWebhookEvent) {
     const { error } = await getServiceClient().from("webhook_events").insert({
       source: event.source,
@@ -20,15 +25,21 @@ export const supabaseWebhookEventStore: WebhookEventStore = {
   },
 };
 
-export const supabaseSyncJobQueue: SyncJobQueue = {
-  async enqueue(job) {
-    const { error } = await getServiceClient()
-      .from("sync_jobs")
-      .insert({
-        job_type: job.type,
-        store_external_id: job.storeExternalId,
-        payload: { orderId: job.orderId },
-      });
+/** Calls the receive_order_webhook RPC, which stores the event and its job in one transaction. */
+export const supabaseOrderWebhookInbox: OrderWebhookInbox = {
+  async receive(event: IncomingOrderEvent) {
+    const { data, error } = await getServiceClient().rpc("receive_order_webhook", {
+      p_event_id: event.eventId,
+      p_event_type: event.eventType,
+      p_store_external_id: event.storeExternalId,
+      p_order_id: event.orderId,
+      p_payload: event.payload,
+      p_received_at: event.receivedAt.toISOString(),
+    });
     if (error) throw error;
+    if (typeof data !== "boolean") {
+      throw new Error("receive_order_webhook returned an unexpected value");
+    }
+    return data;
   },
 };

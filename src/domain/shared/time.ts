@@ -14,3 +14,19 @@ export function median(values: readonly number[]): number | null {
   const lower = sorted[middle - 1] as number;
   return (lower + upper) / 2;
 }
+
+/**
+ * The calendar day (YYYY-MM-DD) before `now`, as seen in `timeZone`.
+ * Used for the daily reconciliation, which covers the day that just closed in the restaurant's
+ * time zone.
+ */
+export function previousDayInTimeZone(now: Date, timeZone: string): string {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const [year, month, day] = today.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+}
