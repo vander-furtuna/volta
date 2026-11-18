@@ -1,0 +1,9 @@
+# pnpm settings for this project (pnpm 12 reads them from this file, not from package.json).
+
+# pnpm refuses versions published too recently (supply-chain protection).
+# Each exclusion below is a reviewed exception; remove it once that version is old enough.
+minimumReleaseAgeExclude:
+  - msw@3.0.7
+
+# No dependency currently needs install scripts. If pnpm reports an ignored build,
+# review the package and approve it with `pnpm approve-builds <package>`.

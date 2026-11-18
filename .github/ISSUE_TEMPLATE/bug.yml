@@ -1,0 +1,22 @@
+name: Bug
+description: Algo não funciona como deveria
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: Inclua passos para reproduzir. Não cole tokens, telefones ou dados reais de clientes.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que era esperado
+    validations:
+      required: true
+  - type: dropdown
+    id: env
+    attributes:
+      label: Ambiente
+      options: [Modo demonstração, Sandbox da CW, Produção]

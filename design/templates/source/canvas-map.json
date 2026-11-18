@@ -1,0 +1,22 @@
+{
+  "canvasUrl": "https://claude.ai/artifact/PT96JSG5kdBuN3FdHyexMV",
+  "note": "Maps each repository template to its artboard file in the design canvas. Use it when re-syncing templates from the canvas.",
+  "templates": {
+    "home.dc.html": "project/Main.dc.html",
+    "audience.dc.html": "project/Publico.dc.html",
+    "offer.dc.html": "project/Oferta.dc.html",
+    "review.dc.html": "project/Revisao.dc.html",
+    "coupon-created.dc.html": "project/Criado.dc.html",
+    "results.dc.html": "project/Resultado.dc.html",
+    "reference.dc.html": "project/Referencia.dc.html",
+    "design-system.dc.html": "project/SistemaVisual.dc.html",
+    "integration.dc.html": "project/Integracao.dc.html",
+    "states.dc.html": "project/Estados.dc.html",
+    "mobile-home.dc.html": "project/Mobile-Inicio.dc.html",
+    "mobile-audience.dc.html": "project/Mobile-Publico.dc.html",
+    "mobile-offer.dc.html": "project/Mobile-Oferta.dc.html",
+    "mobile-review.dc.html": "project/Mobile-Revisao.dc.html",
+    "mobile-coupon-created.dc.html": "project/Mobile-Criado.dc.html",
+    "mobile-results.dc.html": "project/Mobile-Resultado.dc.html"
+  }
+}

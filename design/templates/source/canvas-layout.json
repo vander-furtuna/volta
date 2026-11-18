@@ -1,0 +1,195 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Criado.dc.html": {
+      "expand": "fill",
+      "h": 1480,
+      "is_interactive": true,
+      "title": "Cupom criado e convite",
+      "w": 1440,
+      "x": 6080,
+      "y": 0
+    },
+    "Estados.dc.html": {
+      "h": 1080,
+      "title": "Estados e exceções",
+      "w": 1440,
+      "x": 4520,
+      "y": 2600
+    },
+    "Integracao.dc.html": {
+      "h": 1000,
+      "title": "Integração com a CW App Store",
+      "w": 1560,
+      "x": 2880,
+      "y": 2600
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1640,
+      "is_interactive": true,
+      "title": "Início",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Oferta.dc.html": {
+      "expand": "fill",
+      "h": 1560,
+      "is_interactive": true,
+      "title": "Nova campanha: oferta e limites",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Publico.dc.html": {
+      "expand": "fill",
+      "h": 1640,
+      "is_interactive": true,
+      "title": "Nova campanha: público",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Referencia.dc.html": {
+      "h": 1040,
+      "title": "Referência visual (EasyMart)",
+      "w": 1280,
+      "x": 0,
+      "y": 2600
+    },
+    "Resultado.dc.html": {
+      "expand": "fill",
+      "h": 2200,
+      "is_interactive": true,
+      "title": "Resultado da campanha",
+      "w": 1440,
+      "x": 7600,
+      "y": 0
+    },
+    "Revisao.dc.html": {
+      "expand": "fill",
+      "h": 1560,
+      "is_interactive": true,
+      "title": "Nova campanha: revisão",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "SistemaVisual.dc.html": {
+      "h": 1240,
+      "title": "Sistema visual",
+      "w": 1440,
+      "x": 1360,
+      "y": 2600
+    },
+    "Mobile-Inicio.dc.html": {
+      "h": 2040,
+      "title": "Mobile: início",
+      "w": 390,
+      "x": 0,
+      "y": 4240,
+      "is_interactive": true,
+      "radius": 32
+    },
+    "Mobile-Publico.dc.html": {
+      "h": 1780,
+      "title": "Mobile: público",
+      "w": 390,
+      "x": 470,
+      "y": 4240,
+      "is_interactive": true,
+      "radius": 32
+    },
+    "Mobile-Oferta.dc.html": {
+      "h": 1960,
+      "title": "Mobile: oferta e limites",
+      "w": 390,
+      "x": 940,
+      "y": 4240,
+      "is_interactive": true,
+      "radius": 32
+    },
+    "Mobile-Revisao.dc.html": {
+      "h": 1560,
+      "title": "Mobile: revisão",
+      "w": 390,
+      "x": 1410,
+      "y": 4240,
+      "is_interactive": true,
+      "radius": 32
+    },
+    "Mobile-Criado.dc.html": {
+      "h": 1680,
+      "title": "Mobile: cupom criado e convite",
+      "w": 390,
+      "x": 1880,
+      "y": 4240,
+      "is_interactive": true,
+      "radius": 32
+    },
+    "Mobile-Resultado.dc.html": {
+      "h": 2760,
+      "title": "Mobile: resultado",
+      "w": 390,
+      "x": 2350,
+      "y": 4240,
+      "is_interactive": true,
+      "radius": 32
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-16T22:40:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "rowA": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "Fluxo principal: da oportunidade ao resultado",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "rowB": {
+      "kind": "title1",
+      "maxW": 5960,
+      "text": "Fundamentos: referência, sistema visual, integração e estados",
+      "w": 240,
+      "x": 0,
+      "y": 2300
+    },
+    "rowC": {
+      "kind": "title1",
+      "maxW": 2740,
+      "text": "Versão mobile do fluxo principal",
+      "x": 0,
+      "y": 3940
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Publico.dc.html",
+    "Oferta.dc.html",
+    "Revisao.dc.html",
+    "Criado.dc.html",
+    "Resultado.dc.html",
+    "Referencia.dc.html",
+    "SistemaVisual.dc.html",
+    "Integracao.dc.html",
+    "Estados.dc.html",
+    "Mobile-Inicio.dc.html",
+    "Mobile-Publico.dc.html",
+    "Mobile-Oferta.dc.html",
+    "Mobile-Revisao.dc.html",
+    "Mobile-Criado.dc.html",
+    "Mobile-Resultado.dc.html"
+  ],
+  "pages": [],
+  "title": "Volta — app de campanhas de recompra para a CW App Store"
+}

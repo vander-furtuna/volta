@@ -1,0 +1,33 @@
+name: Tela
+description: Implementar ou ajustar uma tela a partir do template
+labels: [ui]
+body:
+  - type: dropdown
+    id: template
+    attributes:
+      label: Template
+      options:
+        - home
+        - audience
+        - offer
+        - review
+        - coupon-created
+        - results
+        - states
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo
+      description: O que entra e o que fica de fora (estados, dados reais ou de demonstração)
+    validations:
+      required: true
+  - type: checkboxes
+    id: done
+    attributes:
+      label: Pronto quando
+      options:
+        - label: Desktop (1440 px) e mobile (390 px) iguais aos templates
+        - label: Estados de vazio e erro tratados (ver template states)
+        - label: Testes de domínio e e2e cobrindo o fluxo
