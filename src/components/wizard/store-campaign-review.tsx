@@ -17,12 +17,30 @@ export function StoreCampaignReview({
   const offer = campaign.offer;
   return (
     <main className="max-w-content mx-auto flex w-full flex-col gap-5 px-4 py-5 md:gap-7 md:px-8 md:py-7">
-      <Link
-        href="/"
-        className="text-forest inline-flex min-h-11 items-center self-start font-semibold"
-      >
-        Início
-      </Link>
+      <div className="flex flex-wrap items-center gap-4">
+        <Link
+          href="/"
+          className="text-forest inline-flex min-h-11 items-center self-start font-semibold"
+        >
+          Início
+        </Link>
+        {!campaign.coupon_input && (
+          <>
+            <Link
+              href={`/campaigns/new/audience?campaign=${campaign.id}`}
+              className="text-forest inline-flex min-h-11 items-center font-semibold"
+            >
+              Alterar público
+            </Link>
+            <Link
+              href={`/campaigns/new/offer?campaign=${campaign.id}`}
+              className="text-forest inline-flex min-h-11 items-center font-semibold"
+            >
+              Alterar oferta
+            </Link>
+          </>
+        )}
+      </div>
       <h1 className="font-heading text-3xl font-semibold md:text-[38px]">{campaign.name}</h1>
       <p className="bg-mint text-mint-ink rounded-2xl px-4 py-3.5">
         O cupom será criado na loja <strong>{storeName}</strong>.

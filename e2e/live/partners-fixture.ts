@@ -114,6 +114,11 @@ export async function startPartnerFixtures(baseURL: string) {
         };
         return json(storeId);
       }
+      if (pathname === "/rest/v1/sync_jobs" && req.method === "POST") {
+        const body = JSON.parse(await readBody(req));
+        assert.equal(body.store_external_id, 111);
+        return json([], 201);
+      }
       if (pathname === "/rest/v1/users") {
         assert.equal(query.get("store_id"), `eq.${storeId}`);
         return json(

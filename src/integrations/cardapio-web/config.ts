@@ -31,6 +31,7 @@ export const CW_RATE_LIMITS = {
 
 export const CW_PAGE_SIZE = {
   orderHistory: 100,
+  customers: 50,
   coupons: 20,
 } as const;
 

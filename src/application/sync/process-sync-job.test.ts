@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   CwRateLimitedError,
+  type CustomerSnapshot,
   type CwBudget,
+  type CwCustomerSource,
   type CwOrderSource,
   type OrderSnapshot,
   type StoredCredentials,
@@ -38,6 +40,7 @@ function harness(options: {
   lockHeld?: boolean;
   budgetFull?: boolean;
   source?: Partial<CwOrderSource>;
+  customerSource?: Partial<CwCustomerSource>;
   refreshed?: StoredCredentials;
 }) {
   const calls = {
@@ -46,6 +49,7 @@ function harness(options: {
     rescheduled: [] as { id: number; runAfter: Date; error: string; countsAsAttempt: boolean }[],
     enqueued: [] as { jobType: string; payload: unknown; dedupeKey: string }[],
     saved: [] as OrderSnapshot[],
+    savedCustomers: [] as CustomerSnapshot[][],
     sourceCalls: [] as string[],
     refreshes: 0,
     reserved: [] as CwBudget[],
@@ -137,6 +141,20 @@ function harness(options: {
       },
     },
     source,
+    customers: {
+      async saveBatch(_ext, batch) {
+        calls.savedCustomers.push([...batch]);
+      },
+    },
+    customerSource: {
+      async fetchCustomersPage(env, token, page) {
+        calls.sourceCalls.push(`customers:${page}:${token}`);
+        if (options.customerSource?.fetchCustomersPage) {
+          return options.customerSource.fetchCustomersPage(env, token, page);
+        }
+        return { customers: [], currentPage: page, totalPages: page };
+      },
+    },
   };
 
   return { deps, calls };
@@ -339,6 +357,52 @@ describe("processSyncJob: order history backfill", () => {
         },
       }),
     ]);
+  });
+});
+
+describe("processSyncJob: customer sync", () => {
+  const customerJob = (payload: unknown = { page: 1 }): SyncJob => ({
+    id: 4,
+    jobType: "sync_customers",
+    storeExternalId: 123,
+    payload,
+    attempts: 1,
+  });
+
+  it("fetches a customer page, stores the batch and queues the next page", async () => {
+    const sampleCustomer: CustomerSnapshot = {
+      externalId: 77,
+      name: "Ana",
+      phone: "85999990000",
+      allowsWhatsapp: true,
+    };
+    const { deps, calls } = harness({
+      customerSource: {
+        async fetchCustomersPage() {
+          return { customers: [sampleCustomer], currentPage: 1, totalPages: 2 };
+        },
+      },
+    });
+
+    await processSyncJob(customerJob({}), NOW, deps);
+
+    expect(calls.reserved).toEqual(["orderDetails"]);
+    expect(calls.sourceCalls).toEqual(["customers:1:at-fresh"]);
+    expect(calls.savedCustomers).toEqual([[sampleCustomer]]);
+    expect(calls.enqueued).toEqual([
+      {
+        jobType: "sync_customers",
+        payload: { page: 2 },
+        dedupeKey: "customers:123:2",
+      },
+    ]);
+    expect(calls.completed).toEqual([4]);
+  });
+
+  it("fails immediately when the customer page payload is invalid", async () => {
+    const { deps, calls } = harness({});
+    await processSyncJob(customerJob({ page: 0 }), NOW, deps);
+    expect(calls.failed).toEqual([{ id: 4, error: "invalid customers payload" }]);
   });
 });
 

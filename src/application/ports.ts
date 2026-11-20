@@ -127,7 +127,8 @@ export interface TokenRefresher {
 
 /* ---------- Synchronization ---------- */
 
-export type SyncJobType = "fetch_order_details" | "backfill_order_history" | "daily_reconciliation";
+export type SyncJobType =
+  "fetch_order_details" | "backfill_order_history" | "sync_customers" | "daily_reconciliation";
 
 export interface SyncJob {
   id: number;
@@ -196,6 +197,29 @@ export interface OrderSnapshot {
 export interface OrderRepository {
   /** Writes the order and replaces its discounts as one unit. */
   saveSnapshot(storeExternalId: number, snapshot: OrderSnapshot): Promise<void>;
+}
+
+export interface CustomerSnapshot {
+  externalId: number;
+  name: string;
+  phone: string | null;
+  allowsWhatsapp: boolean;
+}
+
+export interface CustomerRepository {
+  saveBatch(storeExternalId: number, customers: readonly CustomerSnapshot[]): Promise<void>;
+}
+
+export interface CwCustomerSource {
+  fetchCustomersPage(
+    environment: StoreEnvironment,
+    accessToken: string,
+    page: number,
+  ): Promise<{
+    customers: CustomerSnapshot[];
+    currentPage: number;
+    totalPages: number;
+  }>;
 }
 
 /** Thrown by the CW adapter when CW answers 429. The job waits instead of failing. */

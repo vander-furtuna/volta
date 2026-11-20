@@ -1,6 +1,8 @@
 import {
   CwRateLimitedError,
+  type CustomerRepository,
   type CwBudget,
+  type CwCustomerSource,
   type CwOrderSource,
   type OrderRepository,
   type RequestBudget,
@@ -32,6 +34,8 @@ export interface SyncDeps {
   budgets: Record<CwBudget, BudgetRule>;
   orders: OrderRepository;
   source: CwOrderSource;
+  customers?: CustomerRepository;
+  customerSource?: CwCustomerSource;
 }
 
 /** The job must wait until `runAfter`. Not a failure. */
@@ -107,10 +111,41 @@ async function runJob(job: SyncJob, now: Date, deps: SyncDeps): Promise<void> {
       return fetchOrderDetails(job, store, now, deps);
     case "backfill_order_history":
       return backfillHistoryPage(job, store, now, deps);
+    case "sync_customers":
+      return syncCustomersPage(job, store, now, deps);
     case "daily_reconciliation":
       return reconcileDay(job, now, deps);
     default:
       throw new PermanentJobError("unknown job type");
+  }
+}
+
+async function syncCustomersPage(
+  job: SyncJob,
+  store: StoreRecord,
+  now: Date,
+  deps: SyncDeps,
+): Promise<void> {
+  if (!deps.customerSource || !deps.customers) {
+    throw new PermanentJobError("customer sync is not configured");
+  }
+  const page = readCustomersPage(job.payload);
+  await reserveOrDefer(job.storeExternalId, "orderDetails", now, deps);
+  const accessToken = await accessTokenFor(store, now, deps);
+
+  const result = await deps.customerSource.fetchCustomersPage(store.environment, accessToken, page);
+  if (result.customers.length > 0) {
+    await deps.customers.saveBatch(job.storeExternalId, result.customers);
+  }
+  if (result.currentPage < result.totalPages) {
+    const nextPage = result.currentPage + 1;
+    await deps.jobs.enqueue({
+      jobType: "sync_customers",
+      storeExternalId: job.storeExternalId,
+      payload: { page: nextPage },
+      runAfter: now,
+      dedupeKey: `customers:${job.storeExternalId}:${nextPage}`,
+    });
   }
 }
 
@@ -263,4 +298,14 @@ function readHistoryQuery(payload: unknown): HistoryQueryPayload {
     throw new PermanentJobError("invalid history payload");
   }
   return { startDate: record.startDate, endDate: record.endDate, page };
+}
+
+function readCustomersPage(payload: unknown): number {
+  const record = payload as Record<string, unknown> | null;
+  if (!record || record.page === undefined) return 1;
+  const page = record.page;
+  if (typeof page !== "number" || !Number.isSafeInteger(page) || page < 1) {
+    throw new PermanentJobError("invalid customers payload");
+  }
+  return page;
 }
