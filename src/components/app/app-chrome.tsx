@@ -341,19 +341,22 @@ export function MobileWizardProgress({ step }: { step: WizardStep }) {
 
 /**
  * Mobile header with a back arrow, a title and an optional subtitle line or extra content
- * (e.g. `MobileWizardProgress`, a status chip). Hidden on desktop.
+ * (e.g. `MobileWizardProgress`, a status chip). Hidden on desktop. Pass `titleAs="h1"` when
+ * the page has no other visible h1 on mobile (the wizard steps).
  */
 export function MobileBackHeader({
   title,
   subtitle,
   backHref = "/",
   backLabel = "Voltar ao início",
+  titleAs: Title = "span",
   children,
 }: {
   title: string;
   subtitle?: ReactNode;
   backHref?: string;
   backLabel?: string;
+  titleAs?: "h1" | "span";
   children?: ReactNode;
 }) {
   return (
@@ -378,7 +381,7 @@ export function MobileBackHeader({
           </svg>
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-px">
-          <span className="font-heading text-ink text-lg font-semibold">{title}</span>
+          <Title className="font-heading text-ink text-lg font-semibold">{title}</Title>
           {subtitle && <span className="text-graphite text-xs">{subtitle}</span>}
         </div>
       </div>

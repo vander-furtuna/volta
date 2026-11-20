@@ -10,6 +10,7 @@ export default function CampaignNotFound() {
       <main className="mx-auto flex w-full max-w-[560px] flex-col px-4 pt-10 pb-16 md:pt-16">
         <StateCard
           titleId="campanha-nao-encontrada"
+          headingLevel="h1"
           eyebrow="Campanha não encontrada"
           title="Não achamos essa campanha"
           icon={

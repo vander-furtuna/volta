@@ -52,6 +52,7 @@ export function StateCard({
   children,
   actions,
   className,
+  headingLevel: Heading = "h2",
 }: {
   icon: ReactNode;
   eyebrow: string;
@@ -60,6 +61,8 @@ export function StateCard({
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
+  /** Use "h1" when the card is the whole page (e.g. not-found). */
+  headingLevel?: "h1" | "h2";
 }) {
   return (
     <section
@@ -71,9 +74,9 @@ export function StateCard({
     >
       {icon}
       <span className="text-graphite text-[13px]">{eyebrow}</span>
-      <h2 id={titleId} className="font-heading text-[21px] leading-[1.25] font-semibold">
+      <Heading id={titleId} className="font-heading text-[21px] leading-[1.25] font-semibold">
         {title}
-      </h2>
+      </Heading>
       {children}
       {actions && <div className="mt-auto flex flex-wrap gap-2.5">{actions}</div>}
     </section>

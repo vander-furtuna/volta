@@ -49,7 +49,8 @@
   --radius-card: 20px;
   --radius-panel: 28px;
 
-  --container-content: 1240px;
+  /* Templates use content-box: 1240px of content plus 32px side padding. Tailwind is border-box. */
+  --container-content: 1304px;
 }
 
 /*

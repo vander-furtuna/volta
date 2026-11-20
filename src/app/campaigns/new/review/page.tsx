@@ -17,6 +17,7 @@ export default function ReviewPage() {
       <AppHeader current="new" mobile={false} />
       <MobileBackHeader
         title={DEMO_CAMPAIGN.name}
+        titleAs="h1"
         subtitle={`Rascunho, salvo às ${DEMO_CAMPAIGN.reviewSavedAt}`}
         backLabel="Sair para o início"
       >
