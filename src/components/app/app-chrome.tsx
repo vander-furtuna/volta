@@ -241,8 +241,19 @@ export function MobileTabBar({ current }: { current?: MainSection }) {
   );
 }
 
-/** Desktop wizard steps: 1 Público — 2 Oferta e limites — 3 Revisão. */
-export function WizardSteps({ step, className }: { step: WizardStep; className?: string }) {
+/**
+ * Desktop wizard steps: 1 Público — 2 Oferta e limites — 3 Revisão. Finished steps show a check
+ * and, when given, a summary label (e.g. `{ 1: "Público: 38 clientes" }`), as in review.dc.html.
+ */
+export function WizardSteps({
+  step,
+  summaries,
+  className,
+}: {
+  step: WizardStep;
+  summaries?: Partial<Record<WizardStep, string>>;
+  className?: string;
+}) {
   return (
     <nav
       aria-label="Etapas da campanha"
@@ -253,26 +264,50 @@ export function WizardSteps({ step, className }: { step: WizardStep; className?:
         const isDone = item.step < step;
         return (
           <span key={item.step} className="flex items-center gap-3">
-            {index > 0 && <span aria-hidden="true" className="bg-border-input h-0.5 w-12" />}
+            {index > 0 && (
+              <span
+                aria-hidden="true"
+                className={cn("h-0.5 w-12", item.step <= step ? "bg-forest" : "bg-border-input")}
+              />
+            )}
             <Link
               href={item.href}
               aria-current={isCurrent ? "step" : undefined}
               className={cn(
                 "flex min-h-11 items-center gap-2.5 text-[15px] no-underline",
-                isCurrent || isDone ? "text-ink font-semibold" : "text-graphite font-medium",
+                isCurrent && "text-ink font-semibold",
+                isDone && "text-ink font-medium",
+                !isCurrent && !isDone && "text-graphite font-medium",
               )}
             >
-              <span
-                className={cn(
-                  "tabular flex size-[30px] items-center justify-center rounded-full text-sm",
-                  isCurrent || isDone
-                    ? "bg-forest text-white"
-                    : "bg-surface border-border-input border-[1.5px]",
-                )}
-              >
-                {item.step}
-              </span>
-              {item.label}
+              {isDone ? (
+                <span className="bg-status-active text-status-active-ink flex size-[30px] items-center justify-center rounded-full">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    className="size-4"
+                  >
+                    <path d="M5 12l5 5 9-10" />
+                  </svg>
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    "tabular flex size-[30px] items-center justify-center rounded-full text-sm",
+                    isCurrent
+                      ? "bg-forest text-white"
+                      : "bg-surface border-border-input border-[1.5px]",
+                  )}
+                >
+                  {item.step}
+                </span>
+              )}
+              {(isDone && summaries?.[item.step]) || item.label}
             </Link>
           </span>
         );
