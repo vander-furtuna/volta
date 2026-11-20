@@ -23,7 +23,7 @@ export async function installStore(
     installations: StoreInstallationRepository;
     requiredScopes: readonly string[];
   },
-): Promise<{ storeId: string }> {
+): Promise<{ storeId: string; userExternalId: number }> {
   const { tokens, identity } = await deps.gateway.completeAuthorization(
     input.code,
     input.codeVerifier,
@@ -32,10 +32,11 @@ export async function installStore(
   const missing = deps.requiredScopes.filter((scope) => !identity.scopes.includes(scope));
   if (missing.length > 0) throw new MissingScopesError(missing);
 
-  return deps.installations.saveInstallation({
+  const installation = await deps.installations.saveInstallation({
     identity,
     environment: input.environment,
     tokens,
     now: input.now,
   });
+  return { ...installation, userExternalId: identity.userExternalId };
 }

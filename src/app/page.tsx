@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { AppHeader, MobileTabBar } from "@/components/app/app-chrome";
 import { CampaignList } from "@/components/home/campaign-list";
@@ -12,6 +13,9 @@ import {
 } from "@/demo/home-fixture";
 import { DAYS_SINCE_LAST_ORDER_BUCKETS } from "@/demo/wizard-fixture";
 import { cn } from "@/lib/utils";
+import { StoreAccessState } from "@/components/states/store-access-state";
+import { readEnv } from "@/server/config/env";
+import { getStoreSession } from "@/server/security/store-session";
 
 /** Home screen. Reference: design/templates/source/home.dc.html and mobile-home.dc.html. */
 
@@ -73,6 +77,28 @@ function ChannelBars() {
 }
 
 export default function HomePage() {
+  if (readEnv().DEMO_MODE) return <DemoHome />;
+  return (
+    <Suspense>
+      <StoreHome />
+    </Suspense>
+  );
+}
+
+async function StoreHome() {
+  const session = await getStoreSession();
+  if (session.status !== "authenticated") {
+    return <StoreAccessState blocked={session.status === "blocked"} />;
+  }
+  return (
+    <main className="max-w-content mx-auto flex w-full flex-col gap-4 px-4 py-8 md:px-8">
+      <p className="text-graphite text-sm">{session.storeName}</p>
+      <h1 className="font-heading text-3xl font-semibold">Campanhas de recompra</h1>
+    </main>
+  );
+}
+
+function DemoHome() {
   const opportunity = DEMO_OPPORTUNITY;
   const identifiedPercent = Math.round(opportunity.identifiedOrderShare * 100);
   const frequentTotal = DAYS_SINCE_LAST_ORDER_BUCKETS.reduce((sum, count) => sum + count, 0);

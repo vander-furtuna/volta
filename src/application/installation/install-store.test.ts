@@ -46,6 +46,7 @@ describe("installStore", () => {
     const deps = fakes();
     await expect(installStore(input, { ...deps, requiredScopes: REQUIRED })).resolves.toEqual({
       storeId: "store-1",
+      userExternalId: 9,
     });
     expect(deps.saved).toHaveLength(1);
   });
