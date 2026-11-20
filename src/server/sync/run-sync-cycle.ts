@@ -1,9 +1,11 @@
 import "server-only";
+import { applyAccessEvents } from "@/application/billing/apply-access-events";
 import { processSyncJob } from "@/application/sync/process-sync-job";
 import { createCwOrderSource } from "@/integrations/cardapio-web/orders";
 import { createCwTokenRefresher } from "@/integrations/cardapio-web/installation";
 import { previousDayInTimeZone } from "@/domain/shared/time";
 import { readEnv, requireEnv } from "@/server/config/env";
+import { supabaseAccessEventInbox } from "@/server/database/repositories";
 import { supabaseStoreCredentialsRepository } from "@/server/database/store-repositories";
 import {
   BUDGET_RULES,
@@ -20,8 +22,9 @@ const LEASE_SECONDS = 300;
 const STORE_TIME_ZONE = "America/Sao_Paulo";
 
 /**
- * One sync cycle: queue yesterday's reconciliation for each store, then claim and process a batch
- * of due jobs. Safe to run from overlapping cron invocations: claims and budgets are atomic in the
+ * One sync cycle: apply pending CW access events (billing), queue yesterday's reconciliation for
+ * each store, then claim and process a batch of due jobs. Access goes first, so a store that was
+ * just allowed or blocked is treated accordingly in the same run. Safe to run from overlapping cron invocations: claims and budgets are atomic in the
  * database.
  */
 export async function runSyncCycle(now: Date) {
@@ -40,6 +43,8 @@ export async function runSyncCycle(now: Date) {
     source: createCwOrderSource(),
   };
 
+  const access = await applyAccessEvents(now, { inbox: supabaseAccessEventInbox });
+
   const queuedReconciliations = await deps.jobs.enqueueDailyReconciliation(
     previousDayInTimeZone(now, STORE_TIME_ZONE),
     now,
@@ -49,5 +54,5 @@ export async function runSyncCycle(now: Date) {
     await processSyncJob(job, new Date(), deps);
   }
 
-  return { processedJobs: jobs.length, queuedReconciliations };
+  return { access, processedJobs: jobs.length, queuedReconciliations };
 }

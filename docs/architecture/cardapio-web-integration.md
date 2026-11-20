@@ -64,15 +64,20 @@ O histórico aceita até 100 pedidos por página e janelas de até 6 meses. Em 4
 - Ordem: validar token → deduplicar por `event_id` → gravar → responder → processar depois.
 - Por isso existe a conciliação diária pelo histórico.
 
-## Cobrança e acesso — `src/app/api/webhooks/cw/billing/route.ts`
+## Cobrança e acesso — `src/app/api/webhooks/cw/billing/handle-billing-webhook.ts`
 
 - A CW cobra o restaurante (Stripe Connect, cobranças diretas). **O app não cobra.** Taxa da plataforma: 20%.
-- Assinatura: `X-Cardapio-Signature: v1=<hex HMAC-SHA256>` sobre `${X-Cardapio-Timestamp}.${corpo original}`, com o `webhook_token`. Rejeitar diferenças de mais de 300 s. Comparar em tempo constante.
-- Cabeçalhos: `X-Cardapio-Event-Id`, `X-Cardapio-Event-Type`, `X-Cardapio-Event-Version`, `X-Cardapio-Timestamp`.
-- Respostas aceitas: 200, 202 ou 204. Use 401 para assinatura inválida e 503 quando o banco estiver fora.
-- Idempotência: `(source, event_id)` único em `webhook_events`.
-- Regra de acesso: liberar só se o último `MARKETPLACE_APP_ACCESS_UPDATED` tem `allowed = true` e `access_until` nulo ou futuro. Bloquear ao atingir `access_until` mesmo sem novo evento. Não reiniciar teste em reinstalação.
-- Continuar aceitando esses eventos depois da desinstalação.
+- **Endereço:** a CW envia os eventos de cobrança para a mesma `webhook_url` do app (a de pedidos). A rota de pedidos repassa ao handler de cobrança toda requisição com `X-Cardapio-Signature`. A rota `/api/webhooks/cw/billing` continua disponível caso a CW aceite um endereço próprio.
+- Assinatura: `X-Cardapio-Signature: v1=<hex HMAC-SHA256>` sobre `${X-Cardapio-Timestamp}.${corpo original}`, com o `webhook_token`. O timestamp é Unix em segundos. Rejeitar diferenças de mais de 300 s. Comparar em tempo constante.
+- Cabeçalhos: `X-Cardapio-Event-Id`, `X-Cardapio-Event-Type`, `X-Cardapio-Event-Version`, `X-Cardapio-Timestamp`. Precisam bater com `event_id`, `event_type` e `version` do corpo; senão, 400.
+- Envelope comum: `event_id`, `event_type`, `version`, `sequence`, `occurred_at`, `company_id`. Tipos: `MARKETPLACE_APP_BILLING_STATUS_UPDATED`, `MARKETPLACE_APP_PAYMENT_SUCCEEDED` e `MARKETPLACE_APP_ACCESS_UPDATED` ([eventos](https://docs.cardapioweb.com/cobranca/eventos.md)).
+- Respostas aceitas: 200, 202 ou 204 (201 conta como falha). Use 401 para assinatura inválida, 400 para corpo inválido e 503 quando o banco estiver fora.
+- Idempotência: `(source, event_id)` único em `webhook_events`. Todo evento autenticado é gravado, inclusive tipos e versões que o Volta não aplica (quarentena).
+- **Só o `MARKETPLACE_APP_ACCESS_UPDATED` (versão 1) libera ou bloqueia.** Pagamento nunca libera acesso sozinho. O plano e o pagamento ficam só na caixa de entrada por enquanto.
+- Aplicação: o cron (`runSyncCycle`) chama `applyAccessEvents`, que usa a função `apply_store_access_event`. Evento de loja ainda não instalada fica pendente até a instalação existir.
+- Ordem: a `sequence` vale só dentro da mesma instalação (`installation_id`). Na mesma instalação, aplica-se só sequência maior (lacunas são normais). Em outra instalação (reinstalação), vale o `occurred_at` mais recente; eventos atrasados da instalação antiga não sobrescrevem a nova.
+- Regra de acesso (`src/domain/access/store-access.ts`): liberar só com `allowed = true` e `access_until` nulo ou futuro. `access_until` é exclusivo. `allowed = false` bloqueia mesmo com `access_until` futuro. Bloquear ao atingir `access_until` mesmo sem novo evento. Não reiniciar teste em reinstalação.
+- Continuar aceitando e aplicando esses eventos depois da desinstalação.
 
 ## Tipos gerados
 

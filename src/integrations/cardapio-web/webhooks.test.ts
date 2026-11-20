@@ -1,7 +1,8 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
-  billingWebhookBodySchema,
+  accessUpdatedEventSchema,
+  billingEventEnvelopeSchema,
   isValidOrderWebhookToken,
   orderWebhookEventSchema,
   verifyBillingSignature,
@@ -33,12 +34,91 @@ describe("orderWebhookEventSchema", () => {
   });
 });
 
-describe("billingWebhookBodySchema", () => {
-  it("accepts JSON objects and rejects anything else", () => {
-    expect(billingWebhookBodySchema.safeParse({ event: "X" }).success).toBe(true);
-    expect(billingWebhookBodySchema.safeParse([]).success).toBe(false);
-    expect(billingWebhookBodySchema.safeParse("text").success).toBe(false);
-    expect(billingWebhookBodySchema.safeParse(null).success).toBe(false);
+/** Example from https://docs.cardapioweb.com/cobranca/eventos.md */
+const accessEvent = {
+  event_id: "169ee546-6d69-49ab-8ff0-4caf7de5cd43",
+  event_type: "MARKETPLACE_APP_ACCESS_UPDATED",
+  version: 1,
+  sequence: 8,
+  occurred_at: "2026-10-29T10:00:02.000-03:00",
+  company_id: 100,
+  marketplace_app_id: 42,
+  installation_id: 500,
+  entitlement: {
+    allowed: true,
+    reason: null,
+    access_until: "2026-12-03T00:00:00-03:00",
+  },
+};
+
+describe("billingEventEnvelopeSchema", () => {
+  it("accepts every billing event type and keeps unknown fields", () => {
+    const payment = {
+      ...accessEvent,
+      event_type: "MARKETPLACE_APP_PAYMENT_SUCCEEDED",
+      payment: { id: 900 },
+    };
+    const parsed = billingEventEnvelopeSchema.parse(payment);
+    expect(parsed.company_id).toBe(100);
+    expect(parsed).toHaveProperty("payment", { id: 900 });
+  });
+
+  it("accepts a company id sent as text, without losing it", () => {
+    expect(billingEventEnvelopeSchema.parse({ ...accessEvent, company_id: "100" }).company_id).toBe(
+      100,
+    );
+  });
+
+  it("rejects bodies without the envelope fields", () => {
+    expect(billingEventEnvelopeSchema.safeParse({ event: "X" }).success).toBe(false);
+    expect(billingEventEnvelopeSchema.safeParse([]).success).toBe(false);
+    expect(billingEventEnvelopeSchema.safeParse(null).success).toBe(false);
+    expect(billingEventEnvelopeSchema.safeParse({ ...accessEvent, sequence: 0 }).success).toBe(
+      false,
+    );
+    expect(
+      billingEventEnvelopeSchema.safeParse({ ...accessEvent, company_id: "12a" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("accessUpdatedEventSchema", () => {
+  it("accepts the documented access event", () => {
+    const parsed = accessUpdatedEventSchema.parse(accessEvent);
+    expect(parsed.installation_id).toBe(500);
+    expect(parsed.entitlement).toMatchObject({ allowed: true, reason: null });
+  });
+
+  it("accepts a block with a reason and an optional transition", () => {
+    const blocked = {
+      ...accessEvent,
+      entitlement: {
+        allowed: false,
+        reason: "cardapio_unavailable",
+        access_until: null,
+        transition: { kind: "free_to_paid", free_access_ends_on: "2026-11-15" },
+      },
+    };
+    expect(accessUpdatedEventSchema.safeParse(blocked).success).toBe(true);
+  });
+
+  it("refuses versions it does not know how to apply", () => {
+    expect(accessUpdatedEventSchema.safeParse({ ...accessEvent, version: 2 }).success).toBe(false);
+  });
+
+  it("refuses an entitlement without allowed or with a date lacking its time zone", () => {
+    expect(
+      accessUpdatedEventSchema.safeParse({
+        ...accessEvent,
+        entitlement: { reason: null, access_until: null },
+      }).success,
+    ).toBe(false);
+    expect(
+      accessUpdatedEventSchema.safeParse({
+        ...accessEvent,
+        entitlement: { allowed: true, reason: null, access_until: "2026-12-03" },
+      }).success,
+    ).toBe(false);
   });
 });
 

@@ -11,7 +11,8 @@ import { z } from "zod";
  *
  * 2. Billing and access (MARKETPLACE_APP_*): hex HMAC-SHA256 keyed with the webhook token,
  *    sent in X-Cardapio-Signature (prefix "v1="), over `${X-Cardapio-Timestamp}.${raw body}`.
- *    Respond 200, 202 or 204. Source: https://docs.cardapioweb.com/cobranca/webhooks.md
+ *    Delivered to the same webhook_url as orders. Respond 200, 202 or 204.
+ *    Source: https://docs.cardapioweb.com/cobranca/webhooks.md
  */
 
 export const SIGNATURE_TOLERANCE_SECONDS = 300;
@@ -40,11 +41,50 @@ export const orderWebhookEventSchema = z.object({
 
 export type OrderWebhookEvent = z.infer<typeof orderWebhookEventSchema>;
 
+/** CW sends ids as integers, but its docs ask consumers to accept them as text too. */
+const cwIdSchema = z.union([
+  z.number().int().nonnegative(),
+  z
+    .string()
+    .regex(/^\d{1,15}$/)
+    .transform(Number),
+]);
+
 /**
- * Billing bodies must be JSON objects. Their fields are not documented in the repository and
- * are not read yet, so only the shape is checked here, and the body is stored as received.
+ * Envelope shared by every billing event (MARKETPLACE_APP_*). Extra fields are kept, because CW
+ * may add fields in a compatible way. Source: https://docs.cardapioweb.com/cobranca/eventos.md
  */
-export const billingWebhookBodySchema = z.looseObject({});
+export const billingEventEnvelopeSchema = z.looseObject({
+  event_id: z.string().min(1).max(100),
+  event_type: z.string().min(1).max(100),
+  version: z.number().int().positive(),
+  /** Order inside one flow only (subscription or installation). Never compare across flows. */
+  sequence: z.number().int().positive(),
+  occurred_at: z.iso.datetime({ offset: true }),
+  company_id: cwIdSchema,
+});
+
+export type BillingEventEnvelope = z.infer<typeof billingEventEnvelopeSchema>;
+
+export const ACCESS_UPDATED_EVENT = "MARKETPLACE_APP_ACCESS_UPDATED";
+/** The only access event format Volta applies. Other versions are stored without effect. */
+export const SUPPORTED_ACCESS_EVENT_VERSION = 1;
+
+/** Effective access of one installation: the only billing event that grants or blocks Volta. */
+export const accessUpdatedEventSchema = billingEventEnvelopeSchema.extend({
+  event_type: z.literal(ACCESS_UPDATED_EVENT),
+  version: z.literal(SUPPORTED_ACCESS_EVENT_VERSION),
+  installation_id: cwIdSchema,
+  entitlement: z.looseObject({
+    allowed: z.boolean(),
+    /** Block reason, null when allowed. Unknown future reasons must still block. */
+    reason: z.string().max(100).nullable(),
+    /** Exclusive limit. Null means no time limit. */
+    access_until: z.iso.datetime({ offset: true }).nullable(),
+  }),
+});
+
+export type AccessUpdatedEvent = z.infer<typeof accessUpdatedEventSchema>;
 
 export type SignatureCheck =
   | { valid: true }

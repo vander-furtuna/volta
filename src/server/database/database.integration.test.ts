@@ -372,4 +372,189 @@ describeDb("database functions", () => {
       expect(rows.every((row) => !row.allowed)).toBe(true);
     });
   });
+
+  describe("apply_store_access_event", () => {
+    let nextEventId = 0;
+
+    async function storeAccessEvent(storeExternalId: number) {
+      nextEventId += 1;
+      const row = await one<{ id: string }>(
+        `insert into webhook_events (source, event_id, event_type, store_external_id, payload)
+         values ('cw_billing', $1, 'MARKETPLACE_APP_ACCESS_UPDATED', $2, '{}') returning id`,
+        [`evt-${nextEventId}`, storeExternalId],
+      );
+      return Number(row.id);
+    }
+
+    async function apply(
+      storeExternalId: number,
+      snapshot: {
+        installation: number;
+        sequence: number;
+        occurredAt: string;
+        allowed: boolean;
+        reason?: string | null;
+        accessUntil?: string | null;
+      },
+    ) {
+      const rowId = await storeAccessEvent(storeExternalId);
+      const result = await one<{ apply_store_access_event: string }>(
+        "select apply_store_access_event($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        [
+          rowId,
+          storeExternalId,
+          snapshot.installation,
+          snapshot.sequence,
+          snapshot.occurredAt,
+          snapshot.allowed,
+          snapshot.reason ?? null,
+          snapshot.accessUntil ?? null,
+          iso(NOW),
+        ],
+      );
+      const event = await one<{ processed_at: Date | null }>(
+        "select processed_at from webhook_events where id = $1",
+        [rowId],
+      );
+      return { outcome: result.apply_store_access_event, processed: event.processed_at !== null };
+    }
+
+    async function accessOf(storeId: string) {
+      return one<{
+        allowed: boolean;
+        reason: string | null;
+        access_until: Date | null;
+        installation_external_id: string | null;
+        last_event_sequence: string | null;
+      }>(
+        `select allowed, reason, access_until, installation_external_id, last_event_sequence
+         from store_access where store_id = $1`,
+        [storeId],
+      );
+    }
+
+    it("grants access from the first snapshot and marks the event processed", async () => {
+      const storeId = await installStore(100, "Loja", false);
+      const result = await apply(100, {
+        installation: 500,
+        sequence: 8,
+        occurredAt: "2026-11-18T10:00:00-03:00",
+        allowed: true,
+        accessUntil: "2026-12-03T00:00:00-03:00",
+      });
+
+      expect(result).toEqual({ outcome: "applied", processed: true });
+      const access = await accessOf(storeId);
+      expect(access.allowed).toBe(true);
+      expect(access.access_until?.toISOString()).toBe("2026-12-03T03:00:00.000Z");
+      expect(access.installation_external_id).toBe("500");
+      expect(access.last_event_sequence).toBe("8");
+    });
+
+    it("ignores an older or repeated sequence of the same installation, even if it arrives later", async () => {
+      const storeId = await installStore(100, "Loja", false);
+      await apply(100, {
+        installation: 500,
+        sequence: 9,
+        occurredAt: "2026-11-18T11:00:00-03:00",
+        allowed: false,
+        reason: "payment_required",
+      });
+
+      const older = await apply(100, {
+        installation: 500,
+        sequence: 8,
+        occurredAt: "2026-11-18T10:00:00-03:00",
+        allowed: true,
+      });
+      const repeated = await apply(100, {
+        installation: 500,
+        sequence: 9,
+        occurredAt: "2026-11-18T11:00:00-03:00",
+        allowed: true,
+      });
+
+      expect(older).toEqual({ outcome: "stale", processed: true });
+      expect(repeated).toEqual({ outcome: "stale", processed: true });
+      const access = await accessOf(storeId);
+      expect(access.allowed).toBe(false);
+      expect(access.reason).toBe("payment_required");
+    });
+
+    it("applies a greater sequence even with gaps", async () => {
+      const storeId = await installStore(100, "Loja", false);
+      await apply(100, {
+        installation: 500,
+        sequence: 2,
+        occurredAt: "2026-11-18T10:00:00-03:00",
+        allowed: true,
+      });
+      const result = await apply(100, {
+        installation: 500,
+        sequence: 7,
+        occurredAt: "2026-11-18T10:05:00-03:00",
+        allowed: false,
+        reason: "subscription_ended",
+      });
+
+      expect(result.outcome).toBe("applied");
+      expect((await accessOf(storeId)).allowed).toBe(false);
+    });
+
+    it("after a re-installation, follows the newest event and ignores late ones from the old installation", async () => {
+      const storeId = await installStore(100, "Loja", false);
+      await apply(100, {
+        installation: 500,
+        sequence: 30,
+        occurredAt: "2026-11-18T10:00:00-03:00",
+        allowed: false,
+        reason: "not_installed",
+      });
+
+      // The new installation restarts its own sequence: a smaller number is still newer.
+      const reinstalled = await apply(100, {
+        installation: 501,
+        sequence: 1,
+        occurredAt: "2026-11-18T12:00:00-03:00",
+        allowed: true,
+      });
+      const late = await apply(100, {
+        installation: 500,
+        sequence: 31,
+        occurredAt: "2026-11-18T11:00:00-03:00",
+        allowed: false,
+        reason: "not_installed",
+      });
+
+      expect(reinstalled.outcome).toBe("applied");
+      expect(late).toEqual({ outcome: "stale", processed: true });
+      const access = await accessOf(storeId);
+      expect(access.allowed).toBe(true);
+      expect(access.installation_external_id).toBe("501");
+    });
+
+    it("keeps the event pending while the store is not installed", async () => {
+      const result = await apply(777, {
+        installation: 500,
+        sequence: 1,
+        occurredAt: "2026-11-18T10:00:00-03:00",
+        allowed: true,
+      });
+      expect(result).toEqual({ outcome: "store_unknown", processed: false });
+    });
+
+    it("keeps applying access events after the store is uninstalled", async () => {
+      const storeId = await installStore(100, "Loja", false);
+      await q("update stores set uninstalled_at = now() where id = $1", [storeId]);
+      const result = await apply(100, {
+        installation: 500,
+        sequence: 4,
+        occurredAt: "2026-11-18T10:00:00-03:00",
+        allowed: false,
+        reason: "not_installed",
+      });
+      expect(result.outcome).toBe("applied");
+      expect((await accessOf(storeId)).reason).toBe("not_installed");
+    });
+  });
 });
