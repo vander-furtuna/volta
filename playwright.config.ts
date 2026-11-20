@@ -7,6 +7,7 @@ const channel = process.env.PLAYWRIGHT_CHANNEL;
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "**/live/**",
   fullyParallel: true,
   reporter: "list",
   use: {

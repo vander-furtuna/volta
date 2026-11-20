@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { readEnv } from "@/server/config/env";
 import type { Metadata } from "next";
 import { AppHeader, MobileBackHeader, MobileWizardProgress } from "@/components/app/app-chrome";
 import { AudienceBuilder } from "@/components/wizard/audience-builder";
@@ -8,6 +10,7 @@ export const metadata: Metadata = { title: "Público · Volta" };
 
 /** Step 1, "Público". Reference: design/templates/source/audience.dc.html and mobile-audience. */
 export default function AudiencePage() {
+  if (!readEnv().DEMO_MODE) redirect("/");
   return (
     <div className="bg-paper flex min-h-screen flex-col">
       <AppHeader current="new" mobile={false} />

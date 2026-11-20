@@ -51,6 +51,7 @@ Para integrar com a CW de verdade, siga [`docs/architecture/cardapio-web-integra
 | `pnpm test` / `pnpm test:watch` | Testes de unidade (Vitest)                                                                 |
 | `pnpm test:db`                  | Testes de integração do banco (exige `VOLTA_TEST_DATABASE_URL` com as migrações aplicadas) |
 | `pnpm test:e2e`                 | Testes ponta a ponta (Playwright; rode `pnpm exec playwright install` antes)               |
+| `pnpm test:e2e:live`            | Fluxo real de autenticação, cupons e resultados com Cardápio Web e Supabase simulados      |
 | `pnpm format`                   | Formata com Prettier                                                                       |
 | `pnpm templates:export`         | Regenera `design/templates/html` a partir dos templates do canvas                          |
 | `pnpm cw:types`                 | Regenera os tipos da API da CW a partir das especificações OpenAPI                         |

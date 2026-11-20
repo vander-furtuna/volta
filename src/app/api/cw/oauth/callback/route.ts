@@ -5,6 +5,7 @@ import { createCwInstallationGateway } from "@/integrations/cardapio-web/install
 import { REQUIRED_CW_SCOPES } from "@/integrations/cardapio-web/config";
 import { OAuthError } from "@/integrations/cardapio-web/oauth";
 import { readEnv, requireEnv } from "@/server/config/env";
+import { setStoreSession } from "@/server/security/store-session";
 import { secretsMatch } from "@/server/security/secret-compare";
 import { supabaseStoreInstallationRepository } from "@/server/database/store-repositories";
 import { OAUTH_COOKIE, oauthCookieOptions } from "../cookies";
@@ -25,7 +26,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await installStore(
+    requireEnv("SESSION_SECRET", env);
+    const session = await installStore(
       { code, codeVerifier, environment: env.CW_ENVIRONMENT, now: new Date() },
       {
         gateway: createCwInstallationGateway({
@@ -37,6 +39,9 @@ export async function GET(request: NextRequest) {
         requiredScopes: REQUIRED_CW_SCOPES,
       },
     );
+    const response = withOAuthCookiesCleared(NextResponse.redirect(new URL("/", env.APP_URL)));
+    setStoreSession(response, session);
+    return response;
   } catch (error) {
     if (error instanceof MissingScopesError) {
       return withOAuthCookiesCleared(
@@ -57,10 +62,6 @@ export async function GET(request: NextRequest) {
     }
     throw error;
   }
-
-  // TODO(sso): open the Volta session once the user account exists. Access stays blocked until
-  // CW billing sends MARKETPLACE_APP_ACCESS_UPDATED.
-  return withOAuthCookiesCleared(NextResponse.redirect(new URL("/", env.APP_URL)));
 }
 
 function withOAuthCookiesCleared(response: NextResponse): NextResponse {

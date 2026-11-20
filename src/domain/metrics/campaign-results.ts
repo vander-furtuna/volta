@@ -56,7 +56,7 @@ export interface CampaignResults {
   };
 }
 
-function usesCoupon(order: OrderSummary, couponId: number): boolean {
+export function usesCoupon(order: OrderSummary, couponId: number): boolean {
   return order.discounts.some((d) => d.category === "coupon" && d.couponId === couponId);
 }
 
