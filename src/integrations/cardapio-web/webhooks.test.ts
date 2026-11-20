@@ -1,6 +1,46 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { isValidOrderWebhookToken, verifyBillingSignature } from "./webhooks";
+import {
+  billingWebhookBodySchema,
+  isValidOrderWebhookToken,
+  orderWebhookEventSchema,
+  verifyBillingSignature,
+} from "./webhooks";
+
+describe("orderWebhookEventSchema", () => {
+  const valid = {
+    event_id: "evt_1",
+    event_type: "ORDER_CREATED",
+    merchant_id: 123,
+    order_id: 90412,
+    order_status: "pending",
+    created_at: "2026-11-17T22:00:00Z",
+  };
+
+  it("accepts a well-formed order event", () => {
+    expect(orderWebhookEventSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects unknown event types, missing ids and wrong types", () => {
+    expect(
+      orderWebhookEventSchema.safeParse({ ...valid, event_type: "ORDER_DELETED" }).success,
+    ).toBe(false);
+    expect(orderWebhookEventSchema.safeParse({ ...valid, order_id: undefined }).success).toBe(
+      false,
+    );
+    expect(orderWebhookEventSchema.safeParse({ ...valid, merchant_id: "123" }).success).toBe(false);
+    expect(orderWebhookEventSchema.safeParse(null).success).toBe(false);
+  });
+});
+
+describe("billingWebhookBodySchema", () => {
+  it("accepts JSON objects and rejects anything else", () => {
+    expect(billingWebhookBodySchema.safeParse({ event: "X" }).success).toBe(true);
+    expect(billingWebhookBodySchema.safeParse([]).success).toBe(false);
+    expect(billingWebhookBodySchema.safeParse("text").success).toBe(false);
+    expect(billingWebhookBodySchema.safeParse(null).success).toBe(false);
+  });
+});
 
 const SECRET = "test-webhook-token";
 const rawBody = '{"event":"MARKETPLACE_APP_ACCESS_UPDATED","allowed":true}';

@@ -16,6 +16,8 @@ export interface OAuthConfig {
   environment: CwEnvironment;
   clientId: string;
   redirectUri: string;
+  /** Replaceable in tests; defaults to the global fetch. */
+  fetchImpl?: typeof fetch;
 }
 
 const tokenResponseSchema = z.object({
@@ -58,7 +60,8 @@ async function postForm(
   path: string,
   form: Record<string, string>,
 ): Promise<Response> {
-  return fetch(new URL(path, cwEndpoints(config.environment).api), {
+  const fetchImpl = config.fetchImpl ?? fetch;
+  return fetchImpl(new URL(path, cwEndpoints(config.environment).api), {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(form),

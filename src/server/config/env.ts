@@ -1,14 +1,16 @@
 import { z } from "zod";
 
 /**
- * Validated environment variables. Empty values are allowed so the app runs in demo mode;
+ * Validated environment variables. Empty values are allowed so local tooling can start;
  * call `requireEnv` wherever a real integration is mandatory.
+ *
+ * Demo mode is never assumed: it is off unless DEMO_MODE=true is set explicitly.
  */
 const envSchema = z.object({
   APP_URL: z.string().default("http://localhost:3000"),
   DEMO_MODE: z
     .enum(["true", "false"])
-    .default("true")
+    .default("false")
     .transform((value) => value === "true"),
   CW_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
   CW_CLIENT_ID: z.string().default(""),

@@ -1,8 +1,11 @@
+import type { z } from "zod";
 import { cwEndpoints, type CwEnvironment } from "./config";
 
 /**
  * Minimal HTTP client for the CW open API.
  * Only the HTTP status is guaranteed by the docs; the error body format is not.
+ * Every successful response is validated with the schema the caller passes in: a response
+ * outside that shape is an error, never a silently cast value.
  */
 
 export class CwApiError extends Error {
@@ -31,6 +34,20 @@ export class CwApiError extends Error {
   }
 }
 
+/**
+ * A 2xx response whose body does not match the expected schema. The body is not kept in the
+ * error, because it can contain customer data.
+ */
+export class CwResponseError extends Error {
+  constructor(
+    message: string,
+    readonly path: string,
+  ) {
+    super(message);
+    this.name = "CwResponseError";
+  }
+}
+
 type QueryParams = Record<string, string | number | undefined>;
 
 export interface CwClientOptions {
@@ -45,6 +62,7 @@ export function createCwClient({ environment, accessToken, fetchImpl = fetch }: 
   async function request<T>(
     method: "GET" | "POST" | "PUT",
     path: string,
+    schema: z.ZodType<T>,
     options: { query?: QueryParams; body?: unknown } = {},
   ): Promise<T> {
     const url = new URL(path, baseUrl);
@@ -71,13 +89,21 @@ export function createCwClient({ environment, accessToken, fetchImpl = fetch }: 
         body,
       );
     }
-    return (await response.json()) as T;
+
+    const parsed = schema.safeParse(await response.json().catch(() => undefined));
+    if (!parsed.success) {
+      throw new CwResponseError(`CW returned an unexpected body for ${method} ${path}`, path);
+    }
+    return parsed.data;
   }
 
   return {
-    get: <T>(path: string, query?: QueryParams) => request<T>("GET", path, { query }),
-    post: <T>(path: string, body: unknown) => request<T>("POST", path, { body }),
-    put: <T>(path: string, body: unknown) => request<T>("PUT", path, { body }),
+    get: <T>(path: string, schema: z.ZodType<T>, query?: QueryParams) =>
+      request<T>("GET", path, schema, { query }),
+    post: <T>(path: string, body: unknown, schema: z.ZodType<T>) =>
+      request<T>("POST", path, schema, { body }),
+    put: <T>(path: string, body: unknown, schema: z.ZodType<T>) =>
+      request<T>("PUT", path, schema, { body }),
   };
 }
 

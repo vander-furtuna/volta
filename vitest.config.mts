@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Database tests need a running Postgres: see `pnpm test:db`.
+    exclude: ["**/node_modules/**", "**/*.integration.test.ts"],
   },
 });

@@ -30,3 +30,45 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  database:
+    name: Database integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: volta
+          POSTGRES_DB: volta
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DEMO_MODE: "true"
+      PGPASSWORD: volta
+      VOLTA_TEST_DATABASE_URL: postgres://postgres:volta@localhost:54329/volta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Supabase roles that the migrations grant to. Created here because the container is plain Postgres.
+      - name: Create Supabase roles
+        run: |
+          psql -h localhost -p 54329 -U postgres -d volta -v ON_ERROR_STOP=1 -c "create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;"
+      - name: Apply migrations in order
+        run: |
+          for file in supabase/migrations/*.sql; do
+            echo "Applying $file"
+            psql -h localhost -p 54329 -U postgres -d volta -v ON_ERROR_STOP=1 -q -f "$file"
+          done
+      - run: pnpm test:db

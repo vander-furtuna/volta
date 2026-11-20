@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "templates:export": "node scripts/export-templates.mjs",
-    "cw:types": "node scripts/generate-cw-types.mjs"
+    "cw:types": "node scripts/generate-cw-types.mjs",
+    "test:db": "vitest run --config vitest.integration.config.mts"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.7",
@@ -38,12 +39,14 @@
     "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "4.3.5",
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "msw": "^3.0.7",
     "openapi-typescript": "^7.13.0",
+    "pg": "^8.23.1",
     "prettier": "^3.10.1",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "4.3.5",

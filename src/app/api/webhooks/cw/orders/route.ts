@@ -5,11 +5,13 @@ import {
   orderWebhookEventSchema,
 } from "@/integrations/cardapio-web/webhooks";
 import { readEnv } from "@/server/config/env";
-import { supabaseSyncJobQueue, supabaseWebhookEventStore } from "@/server/database/repositories";
+import { supabaseOrderWebhookInbox } from "@/server/database/repositories";
+import { PayloadTooLargeError, parseJson, readBodyText } from "@/server/http/read-body";
 
 /**
  * CW order webhooks. Order of operations follows the CW recommendation:
- * validate token → dedupe by event_id → persist → respond 200 → process asynchronously.
+ * validate token → bound and parse the body → validate with Zod → store and schedule atomically
+ * → respond 200 → process asynchronously. Any storage failure answers 503 so CW retries.
  */
 export async function POST(request: NextRequest) {
   const env = readEnv();
@@ -17,14 +19,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });
   }
 
-  const parsed = orderWebhookEventSchema.safeParse(await request.json().catch(() => null));
+  let rawBody: string;
+  try {
+    rawBody = await readBodyText(request);
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
+    }
+    throw error;
+  }
+
+  const parsed = orderWebhookEventSchema.safeParse(parseJson(rawBody));
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
 
-  await receiveOrderEvent(parsed.data, {
-    events: supabaseWebhookEventStore,
-    queue: supabaseSyncJobQueue,
-  });
+  const event = parsed.data;
+  try {
+    await receiveOrderEvent(
+      {
+        eventId: event.event_id,
+        eventType: event.event_type,
+        storeExternalId: event.merchant_id,
+        orderId: event.order_id,
+        payload: event,
+        receivedAt: new Date(),
+      },
+      { inbox: supabaseOrderWebhookInbox },
+    );
+  } catch {
+    // 503 makes CW retry. The failed write was rolled back, so the retry starts clean.
+    return NextResponse.json({ error: "storage_unavailable" }, { status: 503 });
+  }
+
   return NextResponse.json({ received: true });
 }

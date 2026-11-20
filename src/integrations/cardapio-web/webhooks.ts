@@ -40,6 +40,12 @@ export const orderWebhookEventSchema = z.object({
 
 export type OrderWebhookEvent = z.infer<typeof orderWebhookEventSchema>;
 
+/**
+ * Billing bodies must be JSON objects. Their fields are not documented in the repository and
+ * are not read yet, so only the shape is checked here, and the body is stored as received.
+ */
+export const billingWebhookBodySchema = z.looseObject({});
+
 export type SignatureCheck =
   | { valid: true }
   | {
