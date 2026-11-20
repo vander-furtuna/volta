@@ -5,6 +5,7 @@ import type {
   StoreCredentialsRepository,
   StoreInstallationRepository,
   StoredCredentials,
+  StoreUserRepository,
 } from "@/application/ports";
 import { decryptSecret, encryptSecret } from "@/server/security/token-encryption";
 import { requireEnv, readEnv } from "@/server/config/env";
@@ -97,6 +98,19 @@ export const supabaseStoreCredentialsRepository: StoreCredentialsRepository = {
     const { error } = await getServiceClient().rpc("release_store_refresh_lock", {
       p_store_id: storeId,
     });
+    if (error) throw error;
+  },
+};
+
+/** Users are keyed by (store_id, external_id): a CW user id belongs to one store here. */
+export const supabaseStoreUserRepository: StoreUserRepository = {
+  async upsertMember({ storeId, userExternalId, name, email }) {
+    const { error } = await getServiceClient()
+      .from("users")
+      .upsert(
+        { store_id: storeId, external_id: userExternalId, name, email },
+        { onConflict: "store_id,external_id" },
+      );
     if (error) throw error;
   },
 };

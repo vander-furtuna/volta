@@ -36,6 +36,17 @@ export function setStoreSession(response: NextResponse, identity: StoreSessionId
   });
 }
 
+/** Removes any previous session, so a failed sign-in never leaves another store's session open. */
+export function clearStoreSession(response: NextResponse) {
+  response.cookies.set(COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
 export async function getStoreSession() {
   const token = (await cookies()).get(COOKIE_NAME)?.value;
   if (token) await connection();

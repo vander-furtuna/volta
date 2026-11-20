@@ -33,7 +33,16 @@ Escopos: `auth`, `customers`, `orders`, `coupons`. O portal concede todos os cad
 - Botão Acessar: a CW abre `login_url?ticket=ST-...&company_external_id=123`.
 - Validação: `POST /api/partner/v1/identity/sso_tickets/validate` com `{ "ticket": "..." }` e o token **da mesma loja**. Sucesso: `valid: true`, `user`, `company`.
 - Ticket de uso único. Se falhar (`401 invalid_ticket`), mostre o login normal e não reenvie.
-- **A documentação não diz se o app abre em nova aba ou dentro do portal.** Se for iframe, o cookie de sessão precisa de `SameSite=None; Secure; Partitioned`. Pergunta em aberto.
+- O `401` também pode ser `{ "code": 4010 }` (token da loja recusado). Nesse caso renove o token e valide de novo: o ticket não foi consumido.
+- Implementação: `openSsoSession` (`src/application/installation/open-sso-session.ts`) e `createCwSsoTicketValidator` (`src/integrations/cardapio-web/sso.ts`).
+  1. Acha a loja instalada pelo `company_external_id`.
+  2. Usa o token dela, renovado se faltar menos de 1 minuto para expirar ou se a CW recusar o token (uma renovação por vez, com a trava `refreshing_since`).
+  3. Recusa ticket de outro app (`client_id`) e confirmação de outra loja (`company.id` diferente da URL).
+  4. Cria o usuário no primeiro acesso: qualquer funcionário que a CW deixar entrar, não só o Proprietário.
+  5. Abre a sessão (`volta_session`) e redireciona para `/` sem o ticket na URL (`Cache-Control: no-store`, `Referrer-Policy: no-referrer`).
+- Qualquer falha limpa a sessão anterior e leva para `/`, que mostra "Acesse pela Cardápio Web". Isso evita que a pessoa caia na sessão de outra loja.
+- A sessão não depende da cobrança: uma loja bloqueada entra e vê a tela de acesso bloqueado. Toda chamada protegida confere o acesso de novo.
+- **A documentação não diz se o app abre em nova aba ou dentro do portal.** Hoje o cookie usa `SameSite=Lax`, que funciona em nova aba. Se for iframe, ele precisa de `SameSite=None; Secure; Partitioned`. Pergunta em aberto.
 
 ## Limites — `src/integrations/cardapio-web/config.ts`
 

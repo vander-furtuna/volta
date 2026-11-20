@@ -75,6 +75,42 @@ export interface StoreInstallationRepository {
   }): Promise<{ storeId: string }>;
 }
 
+/* ---------- SSO (the "Acessar" button in the CW portal) ---------- */
+
+/** Who CW says clicked "Acessar", after it consumed the ticket. */
+export interface SsoIdentity {
+  storeExternalId: number;
+  userExternalId: number;
+  userName: string;
+  userEmail: string | null;
+}
+
+export type SsoTicketResult =
+  | { status: "valid"; identity: SsoIdentity }
+  /** Invalid, expired, reused or from another app or store. Never send it again. */
+  | { status: "invalid_ticket" }
+  /** CW refused the store's access token. Renew it and validate again. */
+  | { status: "invalid_token" };
+
+export interface SsoTicketValidator {
+  /** Asks CW to validate and consume the single-use ticket, with the store's own token. */
+  validate(
+    environment: StoreEnvironment,
+    accessToken: string,
+    ticket: string,
+  ): Promise<SsoTicketResult>;
+}
+
+export interface StoreUserRepository {
+  /** Creates the user of this store on first access, or refreshes their name and email. */
+  upsertMember(input: {
+    storeId: string;
+    userExternalId: number;
+    name: string;
+    email: string | null;
+  }): Promise<void>;
+}
+
 export interface StoredCredentials {
   accessToken: string;
   accessTokenExpiresAt: Date;
