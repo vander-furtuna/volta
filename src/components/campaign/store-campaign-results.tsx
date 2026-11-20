@@ -54,7 +54,9 @@ export function StoreCampaignResults({
 
       {!results || !usage || !results.lastSyncAt ? (
         <section className="bg-surface border-border rounded-card border p-5 md:p-8">
-          <h2 className="font-heading text-xl font-semibold">Resultados indisponíveis</h2>
+          <h2 className="font-heading text-xl font-semibold">
+            {results ? "Aguardando sincronização" : "Resultados indisponíveis"}
+          </h2>
           <p className="text-graphite mt-2">
             {results
               ? "Ainda não há pedidos sincronizados no período de acompanhamento."
@@ -71,8 +73,10 @@ export function StoreCampaignResults({
               O que dá para afirmar
             </h2>
             <p>
-              <strong>Medido.</strong> O cupom foi usado em {usage.orders}{" "}
-              {usage.orders === 1 ? "pedido concluído" : "pedidos concluídos"}.
+              <strong>Medido.</strong>{" "}
+              {usage.orders === 0
+                ? "Nenhum uso registrado nos pedidos concluídos sincronizados."
+                : `O cupom foi usado em ${usage.orders} ${usage.orders === 1 ? "pedido concluído sincronizado" : "pedidos concluídos sincronizados"}.`}
             </p>
             <p>
               <strong>Observado.</strong>{" "}
@@ -94,7 +98,8 @@ export function StoreCampaignResults({
               Uso do cupom
             </h2>
             <p className="text-graphite">
-              Cupom {campaign.coupon_code} na Cardápio Web, nº {campaign.coupon_external_id}.
+              Cupom {campaign.coupon_code} na Cardápio Web, nº {campaign.coupon_external_id}.{" "}
+              Contagem baseada nos pedidos sincronizados no período.
             </p>
             <dl className="grid gap-4 md:grid-cols-3">
               <ResultStat label="Pedidos com o cupom" value={usage.orders} />
