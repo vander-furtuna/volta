@@ -51,6 +51,36 @@ describeDb("database functions", () => {
     return row.id;
   }
 
+  describe("record_campaign_coupon", () => {
+    it("records one event and refuses updates from another store or user", async () => {
+      const storeId = await installStore(123);
+      const otherStoreId = await installStore(456);
+      const { id: userId } = await one<{ id: string }>("select id from users where store_id = $1", [
+        storeId,
+      ]);
+      const { id } = await one<{ id: string }>(
+        "insert into campaigns (store_id, name, status, audience_criteria) values ($1, 'Recompra', 'audience_frozen', '{}') returning id",
+        [storeId],
+      );
+      const record = (actorStoreId: string, actorUserId: string) =>
+        one<{ confirmed: boolean }>(
+          "select record_campaign_coupon($1, $2, $3, 'audience_frozen', 'coupon_created', 'coupon_created', 99) as confirmed",
+          [actorStoreId, id, actorUserId],
+        );
+      expect((await record(otherStoreId, userId)).confirmed).toBe(false);
+      const { id: otherUserId } = await one<{ id: string }>(
+        "select id from users where store_id = $1",
+        [otherStoreId],
+      );
+      expect((await record(storeId, otherUserId)).confirmed).toBe(false);
+      expect((await record(storeId, userId)).confirmed).toBe(true);
+      expect((await record(storeId, userId)).confirmed).toBe(true);
+      expect(
+        await q("select event_type from campaign_events where campaign_id = $1", [id]),
+      ).toEqual([{ event_type: "coupon_created" }]);
+    });
+  });
+
   describe("receive_order_webhook", () => {
     const args = (eventId: string, orderId = 90412) =>
       [

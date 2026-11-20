@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { readEnv } from "@/server/config/env";
 import type { Metadata } from "next";
 import { AppHeader, MobileBackHeader, MobileWizardProgress } from "@/components/app/app-chrome";
 import { OfferEditor } from "@/components/wizard/offer-editor";
@@ -8,6 +10,7 @@ export const metadata: Metadata = { title: "Oferta e limites · Volta" };
 
 /** Step 2, "Oferta e limites". Reference: design/templates/source/offer.dc.html and mobile-offer. */
 export default function OfferPage() {
+  if (!readEnv().DEMO_MODE) redirect("/");
   return (
     <div className="bg-paper flex min-h-screen flex-col">
       <AppHeader current="new" mobile={false} />

@@ -4,7 +4,7 @@ import { AppHeader, MobileTabBar } from "@/components/app/app-chrome";
 import { CampaignList } from "@/components/home/campaign-list";
 import { DotChart } from "@/components/home/dot-chart";
 import { Button } from "@/components/ui/button";
-import { StatusChip } from "@/components/ui/status-chip";
+import { CampaignStatusChip, StatusChip } from "@/components/ui/status-chip";
 import {
   DEMO_CAMPAIGNS,
   DEMO_IDENTIFIED_BY_CHANNEL,
@@ -14,6 +14,7 @@ import {
 import { DAYS_SINCE_LAST_ORDER_BUCKETS } from "@/demo/wizard-fixture";
 import { cn } from "@/lib/utils";
 import { StoreAccessState } from "@/components/states/store-access-state";
+import { listStoreCampaigns } from "@/server/database/campaign-repository";
 import { readEnv } from "@/server/config/env";
 import { getStoreSession } from "@/server/security/store-session";
 
@@ -90,10 +91,35 @@ async function StoreHome() {
   if (session.status !== "authenticated") {
     return <StoreAccessState blocked={session.status === "blocked"} />;
   }
+  const campaigns = await listStoreCampaigns(session.storeId);
   return (
     <main className="max-w-content mx-auto flex w-full flex-col gap-4 px-4 py-8 md:px-8">
       <p className="text-graphite text-sm">{session.storeName}</p>
       <h1 className="font-heading text-3xl font-semibold">Campanhas de recompra</h1>
+      {campaigns.length === 0 ? (
+        <p className="text-graphite">Nenhuma campanha cadastrada nesta loja.</p>
+      ) : (
+        <ul className="bg-surface rounded-card divide-border-soft divide-y px-4">
+          {campaigns.map((campaign) => (
+            <li
+              key={campaign.id}
+              className="flex flex-wrap items-center justify-between gap-3 py-2"
+            >
+              <Link
+                className="text-forest inline-flex min-h-11 items-center font-semibold"
+                href={
+                  campaign.coupon_external_id === null
+                    ? `/campaigns/new/review?campaign=${campaign.id}`
+                    : `/campaigns/${campaign.id}`
+                }
+              >
+                {campaign.name}
+              </Link>
+              <CampaignStatusChip status={campaign.status} />
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }

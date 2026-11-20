@@ -44,6 +44,27 @@ export interface CwCouponInput {
   item_ids?: number[];
 }
 
+export const cwCouponInputSchema = z.object({
+  name: z.string(),
+  type: couponTypeSchema,
+  value: z.number().nullable(),
+  code: z.string().min(1),
+  active: z.literal(false),
+  minimum_order_value: z.number().nullable(),
+  use_limit: z.number().int().positive(),
+  new_customers_only: z.literal(false),
+  customer_multi_use: z.boolean(),
+  availability_start_time: z.string().nullable().optional(),
+  availability_end_time: z.string().nullable().optional(),
+  available_days: z
+    .array(z.enum(["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]))
+    .optional(),
+  available_order_types: z.array(orderTypeSchema).min(1),
+  available_from: z.iso.date(),
+  expires_at: z.iso.date(),
+  item_ids: z.array(z.number().int().positive()).optional(),
+});
+
 export const cwCouponStatusSchema = z.enum([
   "not_active",
   "not_yet_available",
@@ -121,4 +142,26 @@ export async function findCouponByCode(client: CwClient, code: string): Promise<
     if (match) return match;
     if (page >= result.pagination.total_pages) return null;
   }
+}
+
+/** Compare the terms CW reports before associating a possibly recovered coupon with a campaign. */
+export function matchesInactiveCoupon(
+  coupon: CwCoupon,
+  input: z.infer<typeof cwCouponInputSchema>,
+) {
+  const channels = coupon.available_order_types?.toSorted();
+  return (
+    coupon.active === false &&
+    coupon.code?.toUpperCase() === input.code &&
+    coupon.name === input.name &&
+    coupon.type === input.type &&
+    coupon.value === input.value &&
+    coupon.minimum_order_value === input.minimum_order_value &&
+    coupon.use_limit === input.use_limit &&
+    coupon.new_customers_only === input.new_customers_only &&
+    coupon.customer_multi_use === input.customer_multi_use &&
+    coupon.available_from === input.available_from &&
+    coupon.expires_at === input.expires_at &&
+    channels?.join(",") === input.available_order_types.toSorted().join(",")
+  );
 }

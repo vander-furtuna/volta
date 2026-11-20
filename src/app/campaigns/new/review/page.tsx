@@ -1,3 +1,11 @@
+import { Suspense } from "react";
+import { notFound, redirect } from "next/navigation";
+import { z } from "zod";
+import { StoreAccessState } from "@/components/states/store-access-state";
+import { StoreCampaignReview } from "@/components/wizard/store-campaign-review";
+import { readEnv } from "@/server/config/env";
+import { countFrozenAudience, findStoreCampaign } from "@/server/database/campaign-repository";
+import { getStoreSession } from "@/server/security/store-session";
 import type { Metadata } from "next";
 import { AppHeader, MobileBackHeader, MobileWizardProgress } from "@/components/app/app-chrome";
 import { ReviewSummary } from "@/components/wizard/review-summary";
@@ -11,7 +19,38 @@ export const metadata: Metadata = { title: "Revisão · Volta" };
  * Step 3, "Revisão". The summary reads the campaign draft, so it shows exactly what was chosen.
  * Reference: design/templates/source/review.dc.html and mobile-review.dc.html.
  */
-export default function ReviewPage() {
+export default function ReviewPage({ searchParams }: PageProps<"/campaigns/new/review">) {
+  if (readEnv().DEMO_MODE) return <DemoReviewPage />;
+  return (
+    <Suspense>
+      <StoreReviewPage searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function StoreReviewPage({
+  searchParams,
+}: Pick<PageProps<"/campaigns/new/review">, "searchParams">) {
+  const session = await getStoreSession();
+  if (session.status !== "authenticated") {
+    return <StoreAccessState blocked={session.status === "blocked"} />;
+  }
+  const id = z.uuid().safeParse((await searchParams).campaign);
+  if (!id.success) redirect("/");
+  const campaign = await findStoreCampaign(session.storeId, id.data);
+  if (!campaign) notFound();
+  if (campaign.coupon_external_id !== null) redirect(`/campaigns/${campaign.id}`);
+  const audienceCount = await countFrozenAudience(session.storeId, campaign.id);
+  return (
+    <StoreCampaignReview
+      campaign={campaign}
+      storeName={session.storeName}
+      audienceCount={audienceCount}
+    />
+  );
+}
+
+function DemoReviewPage() {
   return (
     <div className="bg-paper flex min-h-screen flex-col">
       <AppHeader current="new" mobile={false} />
