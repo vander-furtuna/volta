@@ -66,6 +66,12 @@ async function StoreCoupon({ params }: Pick<PageProps<"/campaigns/[id]">, "param
           />
         )}
       </section>
+      <Link
+        href={`/campaigns/${campaign.id}/results`}
+        className="text-forest inline-flex min-h-11 w-fit items-center font-semibold"
+      >
+        Ver resultados
+      </Link>
     </main>
   );
 }
