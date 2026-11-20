@@ -8,6 +8,7 @@ import { readEnv, requireEnv } from "@/server/config/env";
 import { setStoreSession } from "@/server/security/store-session";
 import { secretsMatch } from "@/server/security/secret-compare";
 import { supabaseStoreInstallationRepository } from "@/server/database/store-repositories";
+import { supabaseSyncJobRepository } from "@/server/database/sync-repositories";
 import { OAUTH_COOKIE, oauthCookieOptions } from "../cookies";
 
 /** CW redirects here with `code` and `state` after the owner authorizes the app. */
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
         }),
         installations: supabaseStoreInstallationRepository,
         requiredScopes: REQUIRED_CW_SCOPES,
+        jobs: supabaseSyncJobRepository,
       },
     );
     const response = withOAuthCookiesCleared(NextResponse.redirect(new URL("/", env.APP_URL)));

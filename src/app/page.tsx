@@ -95,7 +95,12 @@ async function StoreHome() {
   return (
     <main className="max-w-content mx-auto flex w-full flex-col gap-4 px-4 py-8 md:px-8">
       <p className="text-graphite text-sm">{session.storeName}</p>
-      <h1 className="font-heading text-3xl font-semibold">Campanhas de recompra</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-heading text-3xl font-semibold">Campanhas de recompra</h1>
+        <Button asChild>
+          <Link href="/campaigns/new/audience">Nova campanha</Link>
+        </Button>
+      </div>
       {campaigns.length === 0 ? (
         <p className="text-graphite">Nenhuma campanha cadastrada nesta loja.</p>
       ) : (
@@ -108,9 +113,11 @@ async function StoreHome() {
               <Link
                 className="text-forest inline-flex min-h-11 items-center font-semibold"
                 href={
-                  campaign.coupon_external_id === null
-                    ? `/campaigns/new/review?campaign=${campaign.id}`
-                    : `/campaigns/${campaign.id}`
+                  campaign.coupon_external_id !== null
+                    ? `/campaigns/${campaign.id}`
+                    : campaign.status === "draft"
+                      ? `/campaigns/new/audience?campaign=${campaign.id}`
+                      : `/campaigns/new/review?campaign=${campaign.id}`
                 }
               >
                 {campaign.name}

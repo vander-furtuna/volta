@@ -1,10 +1,12 @@
 import "server-only";
 import { applyAccessEvents } from "@/application/billing/apply-access-events";
 import { processSyncJob } from "@/application/sync/process-sync-job";
+import { createCwCustomerSource } from "@/integrations/cardapio-web/customers";
 import { createCwOrderSource } from "@/integrations/cardapio-web/orders";
 import { createCwTokenRefresher } from "@/integrations/cardapio-web/installation";
 import { previousDayInTimeZone } from "@/domain/shared/time";
 import { readEnv, requireEnv } from "@/server/config/env";
+import { supabaseCustomerRepository } from "@/server/database/customer-repository";
 import { supabaseAccessEventInbox } from "@/server/database/repositories";
 import { supabaseStoreCredentialsRepository } from "@/server/database/store-repositories";
 import {
@@ -41,6 +43,8 @@ export async function runSyncCycle(now: Date) {
     budgets: BUDGET_RULES,
     orders: supabaseOrderRepository,
     source: createCwOrderSource(),
+    customers: supabaseCustomerRepository,
+    customerSource: createCwCustomerSource(),
   };
 
   const access = await applyAccessEvents(now, { inbox: supabaseAccessEventInbox });

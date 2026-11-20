@@ -32,7 +32,12 @@ export const BUDGET_RULES = {
 
 const jobRowSchema = z.object({
   id: z.number().int(),
-  job_type: z.enum(["fetch_order_details", "backfill_order_history", "daily_reconciliation"]),
+  job_type: z.enum([
+    "fetch_order_details",
+    "backfill_order_history",
+    "sync_customers",
+    "daily_reconciliation",
+  ]),
   store_external_id: z.number().int(),
   payload: z.unknown(),
   attempts: z.number().int(),
