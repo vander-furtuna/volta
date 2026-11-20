@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { connection, type NextResponse } from "next/server";
 import { z } from "zod";
+import { isAccessAllowed } from "@/domain/access/store-access";
 import { readEnv, requireEnv } from "@/server/config/env";
 import { getServiceClient } from "@/server/database/supabase";
 import {
@@ -57,8 +58,13 @@ export async function getStoreSession() {
   const access = store.store_access;
   if (
     store.uninstalled_at !== null ||
-    !access?.allowed ||
-    (access.access_until !== null && Date.parse(access.access_until) <= Date.now())
+    !isAccessAllowed(
+      access && {
+        allowed: access.allowed,
+        accessUntil: access.access_until === null ? null : new Date(access.access_until),
+      },
+      new Date(),
+    )
   ) {
     return { status: "blocked" } as const;
   }

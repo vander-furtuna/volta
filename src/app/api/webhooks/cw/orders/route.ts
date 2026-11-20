@@ -7,6 +7,7 @@ import {
 import { readEnv } from "@/server/config/env";
 import { supabaseOrderWebhookInbox } from "@/server/database/repositories";
 import { PayloadTooLargeError, parseJson, readBodyText } from "@/server/http/read-body";
+import { handleBillingWebhook, isSignedBillingWebhook } from "../billing/handle-billing-webhook";
 
 /**
  * CW order webhooks. Order of operations follows the CW recommendation:
@@ -14,6 +15,10 @@ import { PayloadTooLargeError, parseJson, readBodyText } from "@/server/http/rea
  * → respond 200 → process asynchronously. Any storage failure answers 503 so CW retries.
  */
 export async function POST(request: NextRequest) {
+  // CW sends billing events to the app's single webhook_url too, signed with HMAC instead of
+  // X-Webhook-Token. The billing handler verifies that signature before trusting anything.
+  if (isSignedBillingWebhook(request)) return handleBillingWebhook(request);
+
   const env = readEnv();
   if (!isValidOrderWebhookToken(request.headers.get("x-webhook-token"), env.CW_WEBHOOK_TOKEN)) {
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });
