@@ -8,12 +8,7 @@ import {
   type CampaignStatus,
 } from "@/domain/campaign/campaign-status";
 import type { Offer } from "@/domain/offer/offer";
-import {
-  DEFAULT_CRITERIA,
-  DEMO_CUSTOMERS,
-  DEMO_NOW,
-  DEMO_OFFER,
-} from "@/demo/wizard-fixture";
+import { DEFAULT_CRITERIA, DEMO_CUSTOMERS, DEMO_NOW, DEMO_OFFER } from "@/demo/wizard-fixture";
 
 /**
  * Demo-mode state of the campaign being built (audience → offer → review → coupon created).
