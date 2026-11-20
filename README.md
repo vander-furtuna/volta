@@ -48,8 +48,10 @@ O projeto remoto é o `volta` (ref `dfrbewxwusndjixtbxnu`, região `sa-east-1`).
 pnpm dlx supabase login                                        # uma vez por máquina
 pnpm dlx supabase link --project-ref dfrbewxwusndjixtbxnu      # pede a senha do banco (SUPABASE_DB_PASSWORD)
 pnpm dlx supabase migration list --remote                      # compara supabase/migrations com o remoto
-pnpm dlx supabase db push                                      # aplica as migrações pendentes
+pnpm dlx supabase db push --remote                             # aplica as migrações pendentes
 ```
+
+A CLI 3 aponta para o banco local por padrão; sem `--remote`, os comandos tentam conectar em `127.0.0.1:54322`.
 
 `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (chave secreta, só no servidor) estão em **Project Settings → API Keys** no painel.
 
