@@ -53,7 +53,29 @@ A regra do domínio é verificada pelo ESLint (`no-restricted-imports` em `src/d
 
 ## Agendamento
 
-`/api/cron/sync` roda a cada minuto (Vercel Cron, ou `pg_cron` + `pg_net` no Supabase), protegido por `CRON_SECRET`. Cada execução pega poucas tarefas por loja com `FOR UPDATE SKIP LOCKED`, respeitando 5 consultas por minuto ao histórico. Uma conciliação diária repassa o histórico do dia anterior, porque a CW descarta avisos de pedido depois das retentativas.
+`/api/cron/sync` roda a cada minuto, protegido por `CRON_SECRET`. Cada execução pega poucas tarefas por loja com `FOR UPDATE SKIP LOCKED`, respeitando 5 consultas por minuto ao histórico. Uma conciliação diária repassa o histórico do dia anterior, porque a CW descarta avisos de pedido depois das retentativas.
+
+Quem chama a rota é o próprio Supabase: o `pg_cron` roda o job `volta-sync-cycle` a cada minuto, e a função `request_sync_cycle` faz o `GET` com `pg_net` (migração `*_schedule_sync_cycle.sql`). Não usamos o Vercel Cron porque, no plano Hobby, ele roda no máximo uma vez por dia.
+
+### Ativar no projeto Supabase
+
+1. Aplique as migrações: `pnpm dlx supabase db push --remote`.
+2. Com o app publicado, grave a URL e o segredo no Vault pelo SQL Editor do painel. O valor tem de ser igual ao `CRON_SECRET` do ambiente da Vercel. Não coloque esses valores em migrações nem no git.
+
+   ```sql
+   select vault.create_secret('https://<app>.vercel.app', 'volta_app_url');
+   select vault.create_secret('<CRON_SECRET>', 'volta_cron_secret');
+   ```
+
+   Para trocar um valor depois: `select vault.update_secret(id, '<novo valor>') from vault.secrets where name = 'volta_cron_secret';`
+
+3. Confira: `select * from cron.job_run_details order by start_time desc limit 5;` mostra as execuções, e `select status_code, content from net._http_response order by created desc limit 5;` mostra as respostas da rota.
+
+Enquanto os segredos não existem, cada execução não faz nada. O `pg_net` guarda os cabeçalhos da requisição (com o segredo) em `net.http_request_queue` até enviá-la; só papéis com login no banco conseguem ler essa fila.
+
+### Rodar localmente
+
+O Supabase não alcança `localhost`. Com `pnpm dev` rodando, use `pnpm cron:local` em outro terminal: ele chama a rota a cada minuto com o `CRON_SECRET` do `.env.local`. `pnpm cron:local --once` roda um ciclo só.
 
 ## Por que não usar IA
 

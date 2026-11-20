@@ -65,6 +65,7 @@ A CLI 3 aponta para o banco local por padrão; sem `--remote`, os comandos tenta
 | `pnpm lint` / `pnpm typecheck`  | Verificações isoladas                                                                      |
 | `pnpm test` / `pnpm test:watch` | Testes de unidade (Vitest)                                                                 |
 | `pnpm test:db`                  | Testes de integração do banco (exige `VOLTA_TEST_DATABASE_URL` com as migrações aplicadas) |
+| `pnpm cron:local`               | Chama `/api/cron/sync` a cada minuto em ambiente local (`--once` para um ciclo só)         |
 | `pnpm test:e2e`                 | Testes ponta a ponta (Playwright; rode `pnpm exec playwright install` antes)               |
 | `pnpm test:e2e:live`            | Fluxo real de autenticação, cupons e resultados com Cardápio Web e Supabase simulados      |
 | `pnpm format`                   | Formata com Prettier                                                                       |
