@@ -13,6 +13,7 @@ import type {
 import { CW_RATE_LIMITS } from "@/integrations/cardapio-web/config";
 import { fromCents } from "@/domain/shared/money";
 import { outcomeFromStatus } from "@/domain/order/outcome";
+import { isAccessAllowed } from "@/domain/access/store-access";
 import { getServiceClient } from "./supabase";
 
 const UNIQUE_VIOLATION = "23505";
@@ -130,6 +131,11 @@ const storeRowSchema = z.object({
   uninstalled_at: z.string().nullable(),
 });
 
+const accessRowSchema = z.object({
+  allowed: z.boolean(),
+  access_until: z.iso.datetime({ offset: true }).nullable(),
+});
+
 export const supabaseStoreRegistry: StoreRegistry = {
   async findByExternalId(externalId) {
     const client = getServiceClient();
@@ -144,15 +150,26 @@ export const supabaseStoreRegistry: StoreRegistry = {
     const store = storeRowSchema.parse(data);
     const access = await client
       .from("store_access")
-      .select("allowed")
+      .select("allowed, access_until")
       .eq("store_id", store.id)
       .maybeSingle();
     if (access.error) throw access.error;
+    const accessRow = access.data === null ? null : accessRowSchema.parse(access.data);
 
     return {
       storeId: store.id,
       environment: store.environment,
-      allowed: store.uninstalled_at === null && access.data?.allowed === true,
+      // access_until is checked here too: a store whose period ended makes no CW calls,
+      // even before CW sends the event that blocks it.
+      allowed:
+        store.uninstalled_at === null &&
+        isAccessAllowed(
+          accessRow && {
+            allowed: accessRow.allowed,
+            accessUntil: accessRow.access_until === null ? null : new Date(accessRow.access_until),
+          },
+          new Date(),
+        ),
     };
   },
 };

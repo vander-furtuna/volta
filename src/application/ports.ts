@@ -17,6 +17,33 @@ export interface BillingEventStore {
   saveIfNew(event: StoredWebhookEvent): Promise<boolean>;
 }
 
+/** A validated MARKETPLACE_APP_ACCESS_UPDATED event waiting in the inbox. */
+export interface PendingAccessEvent {
+  /** Inbox row id, used to mark the event as processed. */
+  rowId: number;
+  storeExternalId: number;
+  installationExternalId: number;
+  /** Ordered within one installation only. */
+  sequence: number;
+  occurredAt: Date;
+  allowed: boolean;
+  reason: string | null;
+  /** Exclusive limit; null means no time limit. */
+  accessUntil: Date | null;
+}
+
+export type AccessEventOutcome = "applied" | "stale" | "store_unknown";
+
+export interface AccessEventInbox {
+  /** Pending access events in arrival order. Versions Volta cannot apply are left out. */
+  listPending(limit: number): Promise<PendingAccessEvent[]>;
+  /**
+   * Applies the snapshot unless a newer one is already applied, and marks the event processed,
+   * as one unit. 'store_unknown' leaves the event pending until the installation exists.
+   */
+  apply(event: PendingAccessEvent, now: Date): Promise<AccessEventOutcome>;
+}
+
 export interface IncomingOrderEvent {
   eventId: string;
   eventType: "ORDER_CREATED" | "ORDER_STATUS_UPDATED";

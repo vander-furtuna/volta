@@ -24,9 +24,11 @@ Always prefer those types and the official docs (https://docs.cardapioweb.com/ll
 6. **Billing webhooks** (`X-Cardapio-Signature: v1=<hex>`): HMAC-SHA256 over
    `${X-Cardapio-Timestamp}.${raw body}` with the webhook token. Verify against the raw body string,
    reject timestamps off by more than 300 s, compare in constant time. Answer 200/202/204 only.
+   They arrive at the app's single `webhook_url` (the orders route forwards signed requests).
 7. **CW bills the restaurant.** Never add checkout, payment links or subscriptions. Gate access with
    the latest `MARKETPLACE_APP_ACCESS_UPDATED` (`allowed`, `access_until` exclusive) on every
-   protected server call.
+   protected server call, through `isAccessAllowed` (`src/domain/access/store-access.ts`).
+   Its `sequence` is per installation: never compare it across installations or event types.
 8. **Coupons:**
    - Create with `active: false`; activation is a separate user action.
    - `PUT` requires the full body (`name`, `type`, `value`…). Re-send the stored `coupon_input`.
