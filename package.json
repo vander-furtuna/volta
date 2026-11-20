@@ -55,7 +55,7 @@
   },
   "description": "Volta: repurchase campaigns for Cardápio Web restaurants (CW App Store).",
   "engines": {
-    "node": ">=22",
+    "node": "26.x",
     "pnpm": ">=12"
   },
   "packageManager": "pnpm@12.21.0"

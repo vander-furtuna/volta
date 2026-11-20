@@ -28,7 +28,7 @@ Contexto: Hackathon de Inovação Aberta FEJECE × Cardápio Web 2026, tema "Pro
 
 ## Stack
 
-Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui (Radix), `class-variance-authority`, Supabase (Postgres), Zod, Vitest, Playwright, ESLint, Prettier. Node 22+, pnpm 12.
+Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui (Radix), `class-variance-authority`, Supabase (Postgres), Zod, Vitest, Playwright, ESLint, Prettier. Node 26, pnpm 12.
 
 ## Design: onde está
 

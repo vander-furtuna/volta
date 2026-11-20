@@ -29,7 +29,7 @@ Decisões e alternativas em [`docs/adr/`](docs/adr).
 
 ## Como rodar
 
-Pré-requisitos: Node 22 ou superior (veja `.nvmrc`) e **pnpm 12**. A versão exata está fixada em `packageManager` no `package.json`; qualquer pnpm recente troca sozinho para ela.
+Pré-requisitos: Node 26 (veja `.nvmrc`) e **pnpm 12**. A versão exata está fixada em `packageManager` no `package.json`; qualquer pnpm recente troca sozinho para ela.
 
 ```bash
 corepack enable pnpm         # ou: npm install -g pnpm@12
