@@ -25,7 +25,7 @@ import { getServiceClient } from "@/server/database/supabase";
 
 type Actor = { storeId: string; userId: string };
 const TOKEN_MARGIN_MS = 5 * 60_000;
-const DEFINITE_REJECTIONS = [400, 401, 403, 422];
+const DEFINITE_REJECTIONS = [400, 401, 403, 422, 429];
 const CW_TIMEOUT_MS = 30_000;
 
 async function storeCwClient(storeId: string) {
