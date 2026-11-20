@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import type { NextResponse } from "next/server";
+import { connection, type NextResponse } from "next/server";
 import { z } from "zod";
 import { readEnv, requireEnv } from "@/server/config/env";
 import { getServiceClient } from "@/server/database/supabase";
@@ -38,6 +38,7 @@ export function setStoreSession(response: NextResponse, identity: StoreSessionId
 
 export async function getStoreSession() {
   const token = (await cookies()).get(COOKIE_NAME)?.value;
+  if (token) await connection();
   const identity = verifyStoreSession(token, readEnv().SESSION_SECRET);
   if (!identity) return { status: "unauthenticated" } as const;
 

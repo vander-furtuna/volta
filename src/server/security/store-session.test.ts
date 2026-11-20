@@ -9,6 +9,7 @@ const { cookie, member, filter } = vi.hoisted(() => ({
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: cookie }) }));
+vi.mock("next/server", () => ({ connection: async () => {} }));
 vi.mock("@/server/database/supabase", () => ({
   getServiceClient: () => ({
     from: () => ({ select: () => ({ eq: filter, maybeSingle: member }) }),

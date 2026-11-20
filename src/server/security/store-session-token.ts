@@ -25,7 +25,7 @@ export function signStoreSession(identity: StoreSessionIdentity, secret: string,
   return `${payload}.${signature(payload, secret)}`;
 }
 
-export function verifyStoreSession(token: string | undefined, secret: string, now = new Date()) {
+export function verifyStoreSession(token: string | undefined, secret: string, now?: Date) {
   if (!token || !secret || token.length > 512) return null;
   const [payload, provided, extra] = token.split(".");
   if (
@@ -38,7 +38,7 @@ export function verifyStoreSession(token: string | undefined, secret: string, no
   }
   try {
     const claims = claimsSchema.parse(JSON.parse(Buffer.from(payload, "base64url").toString()));
-    if (claims.expiresAt <= now.getTime()) return null;
+    if (claims.expiresAt <= (now?.getTime() ?? Date.now())) return null;
     return { storeId: claims.storeId, userExternalId: claims.userExternalId };
   } catch {
     return null;
