@@ -358,6 +358,21 @@ describeDb("database functions", () => {
     });
   });
 
+  describe("request_sync_cycle", () => {
+    it("does nothing without Vault, as in plain Postgres, instead of failing every minute", async () => {
+      const row = await one<{ request_sync_cycle: string | null }>("select request_sync_cycle()");
+      expect(row.request_sync_cycle).toBeNull();
+    });
+
+    it("cannot be called by the Data API roles", async () => {
+      const rows = await q<{ role: string; allowed: boolean }>(
+        `select role, has_function_privilege(role, 'request_sync_cycle()', 'execute') as allowed
+         from unnest(array['anon', 'authenticated', 'service_role']) as role`,
+      );
+      expect(rows.every((row) => !row.allowed)).toBe(true);
+    });
+  });
+
   describe("apply_store_access_event", () => {
     let nextEventId = 0;
 
