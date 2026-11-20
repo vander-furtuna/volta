@@ -37,6 +37,13 @@ describe("cwCouponSchema", () => {
     expect(cwCouponSchema.safeParse(coupon(1, "VOLTA10")).success).toBe(true);
   });
 
+  it("accepts a response without the optional uid and status", () => {
+    const response: Record<string, unknown> = coupon(1, "VOLTA10");
+    delete response.uid;
+    delete response.status;
+    expect(cwCouponSchema.safeParse(response).success).toBe(true);
+  });
+
   it("rejects a coupon without an id", () => {
     const withoutId: Record<string, unknown> = { ...coupon(1, "VOLTA10") };
     delete withoutId.id;

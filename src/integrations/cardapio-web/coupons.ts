@@ -77,13 +77,13 @@ export const cwCouponStatusSchema = z.enum([
 /** Coupon as returned by CW. Only the fields Volta relies on are required. */
 export const cwCouponSchema = z.looseObject({
   id: z.number().int().positive(),
-  uid: z.string(),
+  uid: z.string().optional(),
   code: z.string().nullable(),
   name: z.string(),
   type: couponTypeSchema,
   value: z.number().nullable(),
   active: z.boolean(),
-  status: cwCouponStatusSchema,
+  status: cwCouponStatusSchema.optional(),
   minimum_order_value: z.number().nullable(),
   use_limit: z.number().nullable(),
   new_customers_only: z.boolean(),
@@ -144,16 +144,12 @@ export async function findCouponByCode(client: CwClient, code: string): Promise<
   }
 }
 
-/** Compare the terms CW reports before associating a possibly recovered coupon with a campaign. */
-export function matchesInactiveCoupon(
-  coupon: CwCoupon,
-  input: z.infer<typeof cwCouponInputSchema>,
-) {
+/** Verifies the offer and activation state reported in a successful write. */
+export function matchesReviewedCoupon(coupon: CwCoupon, input: CwCouponInput) {
   const channels = coupon.available_order_types?.toSorted();
   return (
-    coupon.active === false &&
-    coupon.code?.toUpperCase() === input.code &&
-    coupon.name === input.name &&
+    coupon.active === input.active &&
+    coupon.code?.toUpperCase() === input.code?.toUpperCase() &&
     coupon.type === input.type &&
     coupon.value === input.value &&
     coupon.minimum_order_value === input.minimum_order_value &&
@@ -162,6 +158,19 @@ export function matchesInactiveCoupon(
     coupon.customer_multi_use === input.customer_multi_use &&
     coupon.available_from === input.available_from &&
     coupon.expires_at === input.expires_at &&
-    channels?.join(",") === input.available_order_types.toSorted().join(",")
+    (channels === undefined ||
+      channels.join(",") === input.available_order_types.toSorted().join(","))
+  );
+}
+
+/** Recovery needs the full offer and name to identify a coupon after a lost response. */
+export function matchesInactiveCoupon(
+  coupon: CwCoupon,
+  input: z.infer<typeof cwCouponInputSchema>,
+) {
+  return (
+    coupon.name === input.name &&
+    coupon.available_order_types !== undefined &&
+    matchesReviewedCoupon(coupon, input)
   );
 }

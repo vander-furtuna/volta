@@ -9,6 +9,9 @@ import {
   cwCouponInputSchema,
   findCouponByCode,
   matchesInactiveCoupon,
+  matchesReviewedCoupon,
+  updateCoupon,
+  type CwCoupon,
   type CwCouponInput,
 } from "@/integrations/cardapio-web/coupons";
 import { toCwCouponInput } from "@/integrations/cardapio-web/coupon-mapper";
@@ -57,6 +60,28 @@ async function storeCwClient(storeId: string) {
     environment: current.environment,
     fetchImpl: (input, init) => fetch(input, { ...init, signal }),
   });
+}
+
+export class CouponConfirmationError extends Error {
+  constructor(readonly inactiveConfirmed: boolean) {
+    super("CW did not confirm the reviewed coupon");
+    this.name = "CouponConfirmationError";
+  }
+}
+
+async function rejectUnexpectedCoupon(
+  client: Awaited<ReturnType<typeof storeCwClient>>,
+  coupon: CwCoupon,
+  couponId: number,
+  inactiveInput: CwCouponInput,
+): Promise<never> {
+  if (coupon.id !== couponId || coupon.code?.toUpperCase() !== inactiveInput.code) {
+    throw new CouponConfirmationError(false);
+  }
+  const inactive = coupon.active
+    ? await updateCoupon(client, couponId, inactiveInput).catch(() => null)
+    : coupon;
+  throw new CouponConfirmationError(inactive?.id === couponId && inactive.active === false);
 }
 
 async function recordTransition(
@@ -135,8 +160,8 @@ export async function confirmInactiveCoupon(actor: Actor, campaignId: string, fr
     async create() {
       try {
         const coupon = await createCoupon(client, input.data);
-        if (coupon.active || coupon.code?.toUpperCase() !== input.data.code) {
-          throw new Error("CW did not confirm an inactive coupon with the reviewed code");
+        if (!matchesReviewedCoupon(coupon, input.data)) {
+          await rejectUnexpectedCoupon(client, coupon, coupon.id, input.data);
         }
         return coupon.id;
       } catch (error) {
@@ -169,7 +194,12 @@ export async function advanceCoupon(
     const input = cwCouponInputSchema.parse(campaign.coupon_input);
     const client = await storeCwClient(actor.storeId);
     const updated = await activateCoupon(client, campaign.coupon_external_id, input);
-    if (!updated.active || updated.id !== campaign.coupon_external_id) return false;
+    if (
+      updated.id !== campaign.coupon_external_id ||
+      !matchesReviewedCoupon(updated, { ...input, active: true })
+    ) {
+      await rejectUnexpectedCoupon(client, updated, campaign.coupon_external_id, input);
+    }
   } else if (campaign.status !== "active") {
     return false;
   }

@@ -1,7 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { campaignId, foreignCampaignId, startPartnerFixtures } from "./partners-fixture";
+
+async function startStoreSession(page: Page, baseURL: string, portal: string) {
+  const start = await page.request.get("/api/cw/oauth/start", { maxRedirects: 0 });
+  expect(start.status()).toBe(307);
+  const authorization = new URL(start.headers().location ?? "");
+  expect(authorization.origin + authorization.pathname).toBe(portal);
+  expect(authorization.searchParams.get("code_challenge_method")).toBe("S256");
+  expect(authorization.searchParams.get("client_id")).toBe("volta-fixture");
+  const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
+  expect(callback.origin).toBe(baseURL);
+  callback.searchParams.set("code", "fixture-oauth-code");
+  callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
+  await page.goto(callback.toString());
+}
 
 test("isolates stores, reconciles coupon creation and reports synced orders", async ({
   page,
@@ -15,17 +29,7 @@ test("isolates stores, reconciles coupon creation and reports synced orders", as
     await page.goto(review);
     await expect(page.getByRole("heading", { name: "Acesse pela Cardápio Web" })).toBeVisible();
 
-    const start = await page.request.get("/api/cw/oauth/start", { maxRedirects: 0 });
-    expect(start.status()).toBe(307);
-    const authorization = new URL(start.headers().location ?? "");
-    expect(authorization.origin + authorization.pathname).toBe(fixture.portal);
-    expect(authorization.searchParams.get("code_challenge_method")).toBe("S256");
-    expect(authorization.searchParams.get("client_id")).toBe("volta-fixture");
-    const callback = new URL(authorization.searchParams.get("redirect_uri") ?? "");
-    expect(callback.origin).toBe(baseURL);
-    callback.searchParams.set("code", "fixture-oauth-code");
-    callback.searchParams.set("state", authorization.searchParams.get("state") ?? "");
-    await page.goto(callback.toString());
+    await startStoreSession(page, baseURL, fixture.portal);
     expect(fixture.errors).toEqual([]);
     await expect(page.getByRole("heading", { name: "Campanhas de recompra" })).toBeVisible();
 
@@ -56,7 +60,15 @@ test("isolates stores, reconciles coupon creation and reports synced orders", as
     expect(fixture.requests).toHaveLength(2);
     await expect(page.getByText("Cupom criado, desativado")).toBeVisible();
 
-    await page.getByRole("button", { name: "Ativar cupom" }).click();
+    const activate = page.getByRole("button", { name: "Ativar cupom" });
+    fixture.responseLimits.activate = null;
+    await activate.click();
+    await expect(alert).toHaveText(/condições diferentes.+cupom está desativado/i);
+    await expect(page.getByText("Cupom criado, desativado")).toBeVisible();
+    expect(fixture.coupon).toMatchObject({ active: false, use_limit: 20 });
+
+    fixture.responseLimits.activate = undefined;
+    await activate.click();
     await page.getByRole("button", { name: "Marcar convites como enviados" }).click();
     await expect(page.getByText("Ativa, convites enviados")).toBeVisible();
 
@@ -98,6 +110,32 @@ test("isolates stores, reconciles coupon creation and reports synced orders", as
       });
     }
     await template.close();
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("does not confirm an inactive coupon with a different limit", async ({ page, baseURL }) => {
+  if (!baseURL) throw new Error("Set the app URL in playwright.live.config.ts");
+  const fixture = await startPartnerFixtures(baseURL);
+  fixture.responseLimits.create = null;
+  const review = `/campaigns/new/review?campaign=${campaignId}`;
+
+  try {
+    await startStoreSession(page, baseURL, fixture.portal);
+    await page.goto(review);
+    const create = page.getByRole("button", { name: "Criar cupom na Cardápio Web" });
+    const alert = page.locator("form").getByRole("alert");
+    await create.click();
+    await expect(alert).toHaveText(/condições diferentes.+cupom está desativado/i);
+    await expect(page).toHaveURL(review);
+    expect(fixture.requests).toHaveLength(1);
+    expect(fixture.coupon).toMatchObject({ active: false, use_limit: null });
+
+    await create.click();
+    await expect(alert).toHaveText("Esse código já está em uso na Cardápio Web.");
+    expect(fixture.requests).toHaveLength(1);
+    expect(fixture.errors).toEqual([]);
   } finally {
     await fixture.close();
   }

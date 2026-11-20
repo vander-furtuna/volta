@@ -53,8 +53,9 @@ export async function startPartnerFixtures(baseURL: string) {
   const access = { allowed: true, access_until: null as string | null };
   const errors: unknown[] = [];
   const requests: CwCouponInput[] = [];
+  const responseLimits: { create?: number | null; activate?: number | null } = {};
   let installedCredentials: object | undefined;
-  let storedCoupon: (CwCouponInput & { id: number; uid: string; status: string }) | null = null;
+  let storedCoupon: (CwCouponInput & { id: number }) | null = null;
   const orders: ReturnType<typeof completedOrder>[] = [];
 
   function completedOrder(number: number, usedCoupon: boolean) {
@@ -185,17 +186,26 @@ export async function startPartnerFixtures(baseURL: string) {
         requests.push(body);
         assert.equal(body.active, false);
         assert.equal(body.code, "VOLTA10");
-        if (requests.length === 1) return json({ error: "rate_limited" }, 429);
+        if (requests.length === 1 && responseLimits.create === undefined) {
+          return json({ error: "rate_limited" }, 429);
+        }
         assert.equal(storedCoupon, null);
-        storedCoupon = { ...body, id: couponId, uid: "fixture-631", status: "not_active" };
+        storedCoupon = { ...body, id: couponId };
+        if (responseLimits.create !== undefined) {
+          storedCoupon.use_limit = responseLimits.create;
+          return json(storedCoupon, 201);
+        }
         // The upstream persisted the coupon, but Volta received a gateway error.
         return json({ error: "gateway_unavailable" }, 503);
       }
       if (pathname === `${couponsPath}/${couponId}` && req.method === "PUT") {
         assert(storedCoupon && campaign.coupon_input);
         const body = JSON.parse(await readBody(req)) as CwCouponInput;
-        assert.deepEqual(body, { ...campaign.coupon_input, active: true });
-        storedCoupon = { ...storedCoupon, ...body, status: "valid" };
+        assert.deepEqual(body, { ...campaign.coupon_input, active: body.active });
+        storedCoupon = { ...storedCoupon, ...body };
+        if (body.active && responseLimits.activate !== undefined) {
+          storedCoupon.use_limit = responseLimits.activate;
+        }
         return json(storedCoupon);
       }
       throw new Error(`Unexpected fixture request ${req.method} ${pathname}`);
@@ -213,6 +223,10 @@ export async function startPartnerFixtures(baseURL: string) {
     errors,
     requests,
     portal,
+    responseLimits,
+    get coupon() {
+      return storedCoupon;
+    },
     addOrder: (number: number, usedCoupon: boolean) =>
       orders.push(completedOrder(number, usedCoupon)),
     close: () =>

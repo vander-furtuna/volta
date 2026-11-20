@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { advanceCoupon, confirmInactiveCoupon } from "@/server/campaigns/campaign-coupons";
+import {
+  advanceCoupon,
+  confirmInactiveCoupon,
+  CouponConfirmationError,
+} from "@/server/campaigns/campaign-coupons";
 import { readEnv } from "@/server/config/env";
 import { getStoreSession } from "@/server/security/store-session";
 
@@ -37,7 +41,12 @@ export async function submitCampaignCoupon(_previousMessage: string | null, form
     } else if (!(await advanceCoupon(session, campaignId, { type: operation }))) {
       return "A campanha mudou de estado. Atualize a página para continuar.";
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof CouponConfirmationError) {
+      return error.inactiveConfirmed
+        ? "A Cardápio Web devolveu condições diferentes da oferta revisada. O cupom está desativado."
+        : "A Cardápio Web devolveu uma resposta diferente da esperada. Confira se o cupom está desativado na Cardápio Web.";
+    }
     return operation === "create"
       ? "Não foi possível confirmar a criação. O rascunho está salvo."
       : "Não foi possível confirmar a atualização. Tente novamente.";
