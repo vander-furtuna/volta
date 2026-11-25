@@ -21,12 +21,12 @@
     "cron:local": "node --env-file-if-exists=.env.local scripts/run-local-cron.mjs"
   },
   "dependencies": {
-    "@hookform/resolvers": "^7.0.7",
-    "@supabase/supabase-js": "^2.119.0",
+    "@hookform/resolvers": "^7.0.8",
+    "@supabase/supabase-js": "^2.119.2",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "date-fns": "^4.4.0",
-    "lucide-react": "^1.74.0",
+    "lucide-react": "^1.77.0",
     "next": "16.4.6",
     "radix-ui": "^1.8.1",
     "react": "19.3.1",
@@ -53,7 +53,7 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "4.3.5",
     "typescript": "^5",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   },
   "description": "Volta: repurchase campaigns for Cardápio Web restaurants (CW App Store).",
   "engines": {
